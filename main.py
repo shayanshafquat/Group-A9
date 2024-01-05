@@ -8,14 +8,24 @@ from flight_controller import FlightController
 
 #---------------------WRITE YOUR OWN CODE HERE------------------------#
 from heuristic_controller import HeuristicController
-from custom_controller import CustomController
+from heuristic_controller_new import CustomController
+from dqn_controller import DQNController, RMSpropOptimizer, NeuralNetwork
+# from custom_controller import CustomController
 
 def generate_controller() -> FlightController:
-    return HeuristicController() # <--- Replace this with your own written controller
+    # return HeuristicController() # <--- Replace this with your own written controller
+
+    # Instantiate DQNController with appropriate sizes (placeholders)
+    state_size = 10  # Assuming 8 state features as per get_state definition
+    action_size = 8  # Assuming we discretize each propeller into 6 actions (up/down)
+    controller = DQNController(state_size, action_size)
+    controller.discretize_action_space(action_size)
+
     # return CustomController()
+    return controller
 
 def is_training() -> bool:
-    return False # <--- Replace this with True if you want to train, false otherwise
+    return True # <--- Replace this with True if you want to train, false otherwise
 def is_saving() -> bool:
     return False # <--- Replace this with True if you want to save the results of training, false otherwise
 
@@ -73,6 +83,7 @@ def main(controller: FlightController):
         drone.set_thrust(controller.get_thrusts(drone))
         # Update the simulation
         drone.step_simulation(delta_time)
+        print(drone.thrust_left, drone.thrust_right)
 
         # --- Begin Drawing --- #
 

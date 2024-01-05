@@ -268,7 +268,8 @@ class DQNController(FlightController):
         # Convert discrete action back to continuous action
         action = self.discrete_actions[action_index]
         drone.set_thrust(action)                   
-        drone.step_simulation(self.get_time_interval())    
+        drone.step_simulation(self.get_time_interval())   
+        # print(drone.thrust_left, drone.thrust_right) 
 
         next_state = self.get_state(drone)
         reward = self.get_reward(next_state, drone)
@@ -318,7 +319,8 @@ class DQNController(FlightController):
     def save(self, filename):
         np.savez(filename, w1=self.model.w1, b1=self.model.b1, w2=self.model.w2, b2=self.model.b2)
 
-    def load(self, filename):
+    def load(self0):
+        filename = "dqn_controller_400.npz"
         data = np.load(filename)
         self.model.w1 = data['w1']
         self.model.b1 = data['b1']
