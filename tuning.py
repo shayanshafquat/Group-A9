@@ -224,9 +224,9 @@ class HeuristicController(FlightController):
         return total_performance / num_eval_episodes
     
     def train(self):
-        learning_rates = [0.1, 0.05, 0.01]
-        discount_factors = np.arange(0.8, 0.95, 0.05)
-        epsilon_decays = [0.9, 0.99, 0.995]
+        learning_rates = [0.1, 0.05]
+        discount_factors = [0.8, 0.9]
+        epsilon_decays = [0.9, 0.99]
 
         all_best_parameters = []
         summary_performance = []
