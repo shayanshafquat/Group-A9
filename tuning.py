@@ -3,39 +3,49 @@ from flight_controller import FlightController
 from drone import Drone
 from typing import Tuple
 import random
+import json
+
 
 class HeuristicController(FlightController):
     def __init__(self):
         super().__init__()
-        self.initial_ky = 1.0
+        self.initial_ky = 1
         self.initial_kx = 0.5
+        self.initial_abs_pitch_delta = 0.1
+        self.initial_abs_thrust_delta = 0.3
         self.ky = self.initial_ky
         self.kx = self.initial_kx
-        self.min_ky = 0.1  # Example minimum value for ky
-        self.max_ky = 2.0  # Example maximum value for ky
-        self.min_kx = 0.05  # Example minimum value for kx
-        self.max_kx = 2.0  # Example maximum value for kx
+        self.min_ky = 1  # Example minimum value for ky
+        self.max_ky = 3.0  # Example maximum value for ky
+        self.min_kx = 0.5  # Example minimum value for kx
+        self.max_kx = 3.0  # Example maximum value for kx
 
-        self.abs_pitch_delta = 0.1
-        self.abs_thrust_delta = 0.3
+        self.abs_pitch_delta = self.initial_abs_pitch_delta
+        self.abs_thrust_delta = self.initial_abs_thrust_delta
         """Creates a heuristic flight controller with some specified parameters
 
         """
-        self.ky_size = 10
-        self.kx_size = 10
+        self.ky_size = 5
+        self.kx_size = 5
+        self.abs_pitch_delta_size = 5
+        self.abs_thrust_delta_size = 5
 
-        self.action_changes = np.linspace(-1, 1, num=20) 
+        self.min_abs_pitch_delta = 0.05
+        self.max_abs_pitch_delta = 0.5
+        self.min_abs_thrust_delta = 0.1
+        self.max_abs_thrust_delta = 0.5
 
-        self.q_table = np.zeros((self.ky_size, self.kx_size, 20, 20))
+        self.action_changes = np.linspace(-0.2, 0.2, num=5) 
+
+        self.q_table = np.zeros((self.ky_size, self.kx_size, self.abs_pitch_delta_size, self.abs_thrust_delta_size, 5, 5, 5, 5))
+        # self.q_table = np.zeros((self.abs_pitch_delta_size, self.abs_thrust_delta_size, 10, 10))
         self.epsilon = 1.0
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.9
         self.learning_rate = 0.1
         self.discount_factor = 0.95
-        self.episodes = 1000
-        self.evaluation_interval = 20
-        self.performance_threshold = 0
-
+        self.episodes = 2000
+        self.evaluation_interval = 50
 
 
     def get_max_simulation_steps(self):
@@ -71,23 +81,8 @@ class HeuristicController(FlightController):
         """Reset the ky and kx parameters to their initial values."""
         self.ky = self.initial_ky
         self.kx = self.initial_kx
-    
-    # def get_state(self, drone):
-    #     # Define the discretization steps for each component
-    #     position_step = 1.0  # e.g., 1 unit of space
-    #     velocity_step = 0.5  # e.g., 0.5 units of velocity
-    #     pitch_step = np.pi / 18  # e.g., 10 degrees
-
-    #     # Discretize each component
-    #     discretized_x = int(drone.x / position_step)
-    #     discretized_y = int(drone.y / position_step)
-    #     discretized_velocity_x = int(drone.velocity_x / velocity_step)
-    #     discretized_velocity_y = int(drone.velocity_y / velocity_step)
-    #     discretized_pitch = int(drone.pitch / pitch_step)
-
-    #     # Combine into a single state
-    #     state = (discretized_x, discretized_y, discretized_velocity_x, discretized_velocity_y, discretized_pitch)
-    #     return state
+        self.abs_pitch_delta = self.initial_abs_pitch_delta
+        self.abs_thrust_delta = self.initial_abs_thrust_delta
     
     def get_reward(self, drone):
         # Efficient computation of the reward using numpy operations
@@ -110,68 +105,178 @@ class HeuristicController(FlightController):
             action_index = np.unravel_index(np.argmax(self.q_table[q_table_index]), self.q_table[q_table_index].shape)
             return action_index
 
+    # def random_action(self):
+    #     # Generate a random action
+    #     action_ky = random.choice(self.action_changes)
+    #     action_kx = random.choice(self.action_changes)
+    #     # Map the float action to its corresponding index
+    #     action_ky_index = np.where(self.action_changes == action_ky)[0][0]
+    #     action_kx_index = np.where(self.action_changes == action_kx)[0][0]
+    #     return (action_ky_index, action_kx_index)
+    
     def random_action(self):
-        # Generate a random action
+        # Generate a random action for each parameter
         action_ky = random.choice(self.action_changes)
         action_kx = random.choice(self.action_changes)
+        action_abs_pitch_delta = random.choice(self.action_changes)
+        action_abs_thrust_delta = random.choice(self.action_changes)
         # Map the float action to its corresponding index
         action_ky_index = np.where(self.action_changes == action_ky)[0][0]
         action_kx_index = np.where(self.action_changes == action_kx)[0][0]
-        return (action_ky_index, action_kx_index)
+        action_abs_pitch_delta_index = np.where(self.action_changes == action_abs_pitch_delta)[0][0]
+        action_abs_thrust_delta_index = np.where(self.action_changes == action_abs_thrust_delta)[0][0]
+        return (action_ky_index, action_kx_index, action_abs_pitch_delta_index, action_abs_thrust_delta_index)
     
-    # def choose_action(self):
-    #     if np.random.rand() <= self.epsilon:
-    #         return self.random_action()
-    #     else:
-    #         q_table_index = self.get_q_table_index()
-    #         return np.unravel_index(np.argmax(self.q_table[q_table_index]), self.q_table[q_table_index].shape)
 
-    # def random_action(self):
-    #     return (random.choice([-1, 0, 1]), random.choice([-1, 0, 1]))
+    # def get_q_table_index(self):
+    #     # Calculate the discretization steps for each parameter
+    #     ky_step = (self.max_ky - self.min_ky) / (self.ky_size - 1)
+    #     kx_step = (self.max_kx - self.min_kx) / (self.kx_size - 1)
+
+    #     # Discretize each parameter
+    #     ky_index = int((self.ky - self.min_ky) / ky_step)
+    #     kx_index = int((self.kx - self.min_kx) / kx_step)
+
+    #     # Ensure indices are within bounds
+    #     ky_index = min(ky_index, self.ky_size - 1)
+    #     kx_index = min(kx_index, self.kx_size - 1)
+    #     return (ky_index, kx_index)
+    
     def get_q_table_index(self):
         # Calculate the discretization steps for each parameter
         ky_step = (self.max_ky - self.min_ky) / (self.ky_size - 1)
         kx_step = (self.max_kx - self.min_kx) / (self.kx_size - 1)
+        abs_pitch_delta_step = (self.max_abs_pitch_delta - self.min_abs_pitch_delta) / (self.abs_pitch_delta_size - 1)
+        abs_thrust_delta_step = (self.max_abs_thrust_delta - self.min_abs_thrust_delta) / (self.abs_thrust_delta_size - 1)
 
         # Discretize each parameter
-        ky_index = int((self.ky - self.min_ky) / ky_step)
-        kx_index = int((self.kx - self.min_kx) / kx_step)
+        ky_index = min(int((self.ky - self.min_ky) / ky_step), self.ky_size - 1)
+        kx_index = min(int((self.kx - self.min_kx) / kx_step), self.kx_size - 1)
+        abs_pitch_delta_index = min(int((self.abs_pitch_delta - self.min_abs_pitch_delta) / abs_pitch_delta_step), self.abs_pitch_delta_size - 1)
+        abs_thrust_delta_index = min(int((self.abs_thrust_delta - self.min_abs_thrust_delta) / abs_thrust_delta_step), self.abs_thrust_delta_size - 1)
 
-        # Ensure indices are within bounds
-        ky_index = min(ky_index, self.ky_size - 1)
-        kx_index = min(kx_index, self.kx_size - 1)
-        return (ky_index, kx_index)
+        return (ky_index, kx_index, abs_pitch_delta_index, abs_thrust_delta_index)
+
     
-    def adjust_parameters(self, action):
-        # Map the action indices back to float values
-        action_ky = self.action_changes[action[0]]
-        action_kx = self.action_changes[action[1]]
-
-        # Adjust the parameters based on the action
-        self.ky += action_ky
-        self.kx += action_kx
-
-        # Ensure parameters stay within their valid range
-        self.ky = np.clip(self.ky, self.min_ky, self.max_ky)
-        self.kx = np.clip(self.kx, self.min_kx, self.max_kx)
-
     # def adjust_parameters(self, action):
-    #     # Calculate the discretization steps for each parameter
-    #     ky_step = (self.max_ky - self.min_ky) / self.ky_size
-    #     kx_step = (self.max_kx - self.min_kx) / self.kx_size
+    #     # Map the action indices back to float values
+    #     action_ky = self.action_changes[action[0]]
+    #     action_kx = self.action_changes[action[1]]
 
     #     # Adjust the parameters based on the action
-    #     self.ky += action[0] * ky_step
-    #     self.kx += action[1] * kx_step
+    #     self.ky += action_ky
+    #     self.kx += action_kx
 
     #     # Ensure parameters stay within their valid range
     #     self.ky = np.clip(self.ky, self.min_ky, self.max_ky)
     #     self.kx = np.clip(self.kx, self.min_kx, self.max_kx)
 
+    def adjust_parameters(self, action):
+        # Map the action indices back to float values
+        action_ky = self.action_changes[action[0]]
+        action_kx = self.action_changes[action[1]]
+        action_abs_pitch_delta = self.action_changes[action[2]]
+        action_abs_thrust_delta = self.action_changes[action[3]]
+
+        # Adjust the parameters based on the action
+        self.ky += action_ky
+        self.kx += action_kx
+        self.abs_pitch_delta += action_abs_pitch_delta
+        self.abs_thrust_delta += action_abs_thrust_delta
+
+        # Ensure parameters stay within their valid range
+        self.ky = np.clip(self.ky, self.min_ky, self.max_ky)
+        self.kx = np.clip(self.kx, self.min_kx, self.max_kx)
+        self.abs_pitch_delta = np.clip(self.abs_pitch_delta, self.min_abs_pitch_delta, self.max_abs_pitch_delta)
+        self.abs_thrust_delta = np.clip(self.abs_thrust_delta, self.min_abs_thrust_delta, self.max_abs_thrust_delta)
+
+    def evaluate_performance(self):
+        """
+        Evaluate the performance of the current controller settings.
+
+        Returns:
+            float: A performance score, higher is better.
+        """
+        total_performance = 0
+        num_eval_episodes = 5  # Number of episodes to run for evaluation
+
+        for _ in range(num_eval_episodes):
+            drone = self.init_drone()  # Initialize the drone for each evaluation episode
+            episode_performance = 0
+
+            for _ in range(self.get_max_simulation_steps()):
+                # Get the thrusts based on current ky and kx values
+                thrusts = self.get_thrusts(drone)
+                drone.set_thrust(thrusts)
+
+                # Update the drone's state
+                drone.step_simulation(self.get_time_interval())
+
+                # Calculate the reward for the current step
+                reward = self.get_reward(drone)
+                episode_performance += reward
+
+            # Average performance over the episode
+            total_performance += episode_performance / self.get_max_simulation_steps()
+
+        # Average performance over all evaluation episodes
+        return total_performance / num_eval_episodes
     
     def train(self):
+        learning_rates = [0.1, 0.05, 0.01]
+        discount_factors = np.arange(0.8, 0.95, 0.05)
+        epsilon_decays = [0.9, 0.99, 0.995]
+
+        all_best_parameters = []
+        summary_performance = []
+
+        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
+        current_run = 0
+
+        for lr in learning_rates:
+            for df in discount_factors:
+                for ed in epsilon_decays:
+                    self.__init__()
+                    current_run += 1
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+
+                    self.learning_rate = lr
+                    self.discount_factor = df
+                    self.epsilon_decay = ed
+
+                    best_performance, best_parameters_list = self.run_training_sequence()
+                    
+                    # Add hyperparameters to each entry in best_parameters_list
+                    for params in best_parameters_list:
+                        params['hyperparameters'] = {
+                            'learning_rate': lr,
+                            'discount_factor': df,
+                            'epsilon_decay': ed
+                        }
+                        all_best_parameters.append(params)
+
+                    summary_performance.append({
+                        'learning_rate': lr,
+                        'discount_factor': df,
+                        'epsilon_decay': ed,
+                        'best_performance': best_performance
+                    })
+
+        # Save all best parameters
+        with open('./Results/tuning/all_best_parameters_heuristic_1.json', 'w') as file:
+            json.dump(all_best_parameters, file, indent=4)
+
+        # Save summary performance
+        with open('./Results/tuning/summary_performance_heuristic_1.json', 'w') as file:
+            json.dump(summary_performance, file, indent=4)
+
+    def run_training_sequence(self):
         best_performance = float('-inf')
-        best_parameters = (self.ky, self.kx)
+        best_performance = self.evaluate_performance()
+        print(f"Initial Performance:{best_performance}")
+        best_parameters_list = []  # List to store the best parameters over time
+        evaluation_epochs = []
+        cumulative_rewards = [] 
 
         for episode in range(self.episodes):
             # Reset environment and parameters
@@ -205,53 +310,31 @@ class HeuristicController(FlightController):
                 new_value = (1 - self.learning_rate) * old_value + self.learning_rate * (reward + self.discount_factor * next_max)
                 self.q_table[q_table_index] = new_value
 
-                # Decrease epsilon
-                self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
+            # Decrease epsilon
+            self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
+
             # Evaluate and potentially save parameters
             if episode % self.evaluation_interval == 0:
                 performance = self.evaluate_performance()  # Implement this method
-                if performance > best_performance:
+                cumulative_rewards.append(performance)  # Store the cumulative reward
+                evaluation_epochs.append(episode + 1)  # Store the epoch number
+
+                if performance >= best_performance:
                     best_performance = performance
-                    best_parameters = (self.ky, self.kx)
-                    print(f"best performance:{best_performance}Best parameters:{best_parameters}")
-            print(f"Episode {episode + 1}: Total Reward: {total_reward}")
-
-        
-        if best_performance >= self.performance_threshold:
-            self.ky, self.kx = best_parameters
-            self.save()
-
-    def evaluate_performance(self):
-        """
-        Evaluate the performance of the current controller settings.
-
-        Returns:
-            float: A performance score, higher is better.
-        """
-        total_performance = 0
-        num_eval_episodes = 5  # Number of episodes to run for evaluation
-
-        for _ in range(num_eval_episodes):
-            drone = self.init_drone()  # Initialize the drone for each evaluation episode
-            episode_performance = 0
-
-            for _ in range(self.get_max_simulation_steps()):
-                # Get the thrusts based on current ky and kx values
-                thrusts = self.get_thrusts(drone)
-                drone.set_thrust(thrusts)
-
-                # Update the drone's state
-                drone.step_simulation(self.get_time_interval())
-
-                # Calculate the reward for the current step
-                reward = self.get_reward(drone)
-                episode_performance += reward
-
-            # Average performance over the episode
-            total_performance += episode_performance / self.get_max_simulation_steps()
-
-        # Average performance over all evaluation episodes
-        return total_performance / num_eval_episodes
+                    current_best_parameters = {
+                        'episode': episode + 1,
+                        'performance': best_performance,
+                        'parameters': {
+                            'ky': self.ky,
+                            'kx': self.kx,
+                            'abs_pitch_delta': self.abs_pitch_delta,
+                            'abs_thrust_delta': self.abs_thrust_delta
+                        }
+                    }
+                    best_parameters_list.append(current_best_parameters)
+                    print(f"Parameter tuned: {current_best_parameters}")
+                print(f"Episode {episode + 1}: Cumulative Reward / Step: {performance}")
+        return best_performance, best_parameters_list
 
 
     def load(self):

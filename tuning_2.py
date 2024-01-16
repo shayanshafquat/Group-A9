@@ -5,7 +5,7 @@ import random
 
 
 
-class CustomController(FlightController):
+class HeuristicController2(FlightController):
     def __init__(self):
         # Define the constants for the controller
         self.initial_k = 2
@@ -22,24 +22,25 @@ class CustomController(FlightController):
         # Define ranges and sizes for discretization
         self.min_k = 1.0
         self.max_k = 10.0
-        # self.min_b = 0.1
-        # self.max_b = 1.0
+        self.min_b = 0.1
+        self.max_b = 1.0
         self.min_k_theta = 1.0
         self.max_k_theta = 10.0
-        # self.min_b_theta = 0.1
-        # self.max_b_theta = 1.0
-        self.k_size = 10
-        # self.b_size = 10
-        self.k_theta_size = 10
-        # self.b_theta_size = 10
+        self.min_b_theta = 0.1
+        self.max_b_theta = 1.0
+        self.k_size = 5
+        self.b_size = 5
+        self.k_theta_size = 5
+        self.b_theta_size = 5
 
          # Action space
-        self.action_changes = np.linspace(-1, 10, num=40) 
+        self.action_changes_k = np.linspace(-1, 10, num=5) 
+        self.action_changes_b = np.linspace(-0.1, 1, num=5)
 
         # Initialize Q-table
-        # self.q_table = np.zeros((self.k_size, self.b_size, self.k_theta_size, self.b_theta_size, 10, 10, 10, 10))
+        self.q_table = np.zeros((self.k_size, self.b_size, self.k_theta_size, self.b_theta_size, 5, 5, 5, 5))
         # self.q_table = np.zeros((self.b_size, self.b_theta_size, 5, 5))
-        self.q_table = np.zeros((self.k_size, self.k_theta_size, 40, 40))
+        # self.q_table = np.zeros((self.k_size, self.k_theta_size, 20, 20))
 
         self.epsilon = 1.0
         self.epsilon_min = 0.01
@@ -103,53 +104,56 @@ class CustomController(FlightController):
     def get_q_table_index(self):
         # Calculate the discretization steps for each parameter
         k_step = (self.max_k - self.min_k) / (self.k_size - 1)
-        # b_step = (self.max_b - self.min_b) / (self.b_size - 1)
+        b_step = (self.max_b - self.min_b) / (self.b_size - 1)
         k_theta_step = (self.max_k_theta - self.min_k_theta) / (self.k_theta_size - 1)
-        # b_theta_step = (self.max_b_theta - self.min_b_theta) / (self.b_theta_size - 1)
+        b_theta_step = (self.max_b_theta - self.min_b_theta) / (self.b_theta_size - 1)
 
         # Discretize each parameter
         k_index = min(int((self.k - self.min_k) / k_step), self.k_size - 1)
-        # b_index = min(int((self.b - self.min_b) / b_step), self.b_size - 1)
+        b_index = min(int((self.b - self.min_b) / b_step), self.b_size - 1)
         k_theta_index = min(int((self.k_theta - self.min_k_theta) / k_theta_step), self.k_theta_size - 1)
-        # b_theta_index = min(int((self.b_theta - self.min_b_theta) / b_theta_step), self.b_theta_size - 1)
+        b_theta_index = min(int((self.b_theta - self.min_b_theta) / b_theta_step), self.b_theta_size - 1)
 
-        # return (k_index, b_index, k_theta_index, b_theta_index)
+        return (k_index, b_index, k_theta_index, b_theta_index)
         # return (b_index, b_theta_index)
-        return (k_index, k_theta_index)
+        # return (k_index, k_theta_index)
     
     def adjust_parameters(self, action):
-        action_k = self.action_changes[action[0]]
-        action_k_theta = self.action_changes[action[1]]
+        action_k = self.action_changes_k[action[0]]
+        action_k_theta = self.action_changes_k[action[2]]
+
+        action_b = self.action_changes_b[action[1]]
+        action_b_theta = self.action_changes_b[action[3]]
 
         # Adjust all four parameters based on the action
         self.k += action_k
-        # self.b += action[0]
+        self.b += action_b
         self.k_theta += action_k_theta
-        # self.b_theta += action[1]
+        self.b_theta += action_b_theta
 
         # Ensure parameters stay within their valid range
         # print(self.k, self.k_theta)
         self.k = np.clip(self.k, self.min_k, self.max_k)
-        # self.b = np.clip(self.b, self.min_b, self.max_b)
+        self.b = np.clip(self.b, self.min_b, self.max_b)
         self.k_theta = np.clip(self.k_theta, self.min_k_theta, self.max_k_theta)
-        # self.b_theta = np.clip(self.b_theta, self.min_b_theta, self.max_b_theta)
+        self.b_theta = np.clip(self.b_theta, self.min_b_theta, self.max_b_theta)
 
     def random_action(self):
         # Generate a random action for each parameter
-        action_k = random.choice(self.action_changes)
-        # action_b = random.choice(self.action_changes)
-        action_k_theta = random.choice(self.action_changes)
-        # action_b_theta = random.choice(self.action_changes)
+        action_k = random.choice(self.action_changes_k)
+        action_b = random.choice(self.action_changes_b)
+        action_k_theta = random.choice(self.action_changes_k)
+        action_b_theta = random.choice(self.action_changes_b)
 
         # Map the float action to its corresponding index
-        action_k_index = np.where(self.action_changes == action_k)[0][0]
-        # action_b_index = np.where(self.action_changes == action_b)[0][0]
-        action_k_theta_index = np.where(self.action_changes == action_k_theta)[0][0]
-        # action_b_theta_index = np.where(self.action_changes == action_b_theta)[0][0]
+        action_k_index = np.where(self.action_changes_k == action_k)[0][0]
+        action_b_index = np.where(self.action_changes_b == action_b)[0][0]
+        action_k_theta_index = np.where(self.action_changes_k == action_k_theta)[0][0]
+        action_b_theta_index = np.where(self.action_changes_b == action_b_theta)[0][0]
 
-        # return (action_k_index, action_b_index, action_k_theta_index, action_b_theta_index)
+        return (action_k_index, action_b_index, action_k_theta_index, action_b_theta_index)
         # return (action_b_index, action_b_theta_index)
-        return (action_k_index, action_k_theta_index)
+        # return (action_k_index, action_k_theta_index)
 
     def reset_parameters(self):
         """Reset the ky and kx parameters to their initial values."""
@@ -168,6 +172,54 @@ class CustomController(FlightController):
             return action_index
 
     def train(self):
+        learning_rates = [0.1, 0.05, 0.01]
+        discount_factors = np.arange(0.8, 0.95, 0.05)
+        epsilon_decays = [0.9, 0.99, 0.995]
+
+        all_best_parameters = []
+        summary_performance = []
+
+        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
+        current_run = 0
+
+        for lr in learning_rates:
+            for df in discount_factors:
+                for ed in epsilon_decays:
+                    self.__init__()
+                    current_run += 1
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+
+                    self.learning_rate = lr
+                    self.discount_factor = df
+                    self.epsilon_decay = ed
+
+                    best_performance, best_parameters_list = self.run_training_sequence()
+                    
+                    # Add hyperparameters to each entry in best_parameters_list
+                    for params in best_parameters_list:
+                        params['hyperparameters'] = {
+                            'learning_rate': lr,
+                            'discount_factor': df,
+                            'epsilon_decay': ed
+                        }
+                        all_best_parameters.append(params)
+
+                    summary_performance.append({
+                        'learning_rate': lr,
+                        'discount_factor': df,
+                        'epsilon_decay': ed,
+                        'best_performance': best_performance
+                    })
+
+        # Save all best parameters
+        with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'w') as file:
+            json.dump(all_best_parameters, file, indent=4)
+
+        # Save summary performance
+        with open('./Results/tuning/summary_performance_heuristic_2.json', 'w') as file:
+            json.dump(summary_performance, file, indent=4)
+
+    def run_training_sequence(self):
         best_performance = float('-inf')
         best_performance = self.evaluate_performance()
         print(f"Initial Performance:{best_performance}")
@@ -215,7 +267,7 @@ class CustomController(FlightController):
                 performance = self.evaluate_performance()  # Implement this method
                 if performance > best_performance:
                     best_performance = performance
-                    print(best_performance)
+        #             print(best_performance)
                     current_best_parameters = {
                         'episode': episode + 1,
                         'performance': best_performance,
@@ -227,10 +279,12 @@ class CustomController(FlightController):
                         }
                     }
                     best_parameters_list.append(current_best_parameters)
-                    print(f"Parameter tuning: {current_best_parameters}")
-                print(f"After Episode {episode + 1}: Mean Cumulative Reward: {performance}")
-        with open('heuristic_controller_2.1_parameters.json', 'w') as file:
-            json.dump(best_parameters_list, file, indent=4)
+                    print(f"Parameter tuned: {current_best_parameters}")
+                print(f"After Episode {episode + 1}: Mean Cumulative Reward / Step: {performance}")
+
+        return best_performance, best_parameters_list
+        # with open('heuristic_controller_2.1_parameters.json', 'w') as file:
+        #     json.dump(best_parameters_list, file, indent=4)
 
     def evaluate_performance(self):
         """
