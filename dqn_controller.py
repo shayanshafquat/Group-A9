@@ -2,6 +2,7 @@ from flight_controller import FlightController
 from drone import Drone
 from typing import Tuple
 import numpy as np
+from q_learning import heuristic1, heuristic2
 
 class RMSpropOptimizer:
     def __init__(self, learning_rate=0.001, rho=0.9, epsilon=1e-08):
@@ -10,12 +11,6 @@ class RMSpropOptimizer:
         self.epsilon = epsilon
         self.cache = {}
 
-    # def update(self, params, grads):
-    #     for p, g in zip(params, grads):
-    #         if p not in self.cache:
-    #             self.cache[p] = np.zeros_like(g)
-    #         self.cache[p] = self.rho * self.cache[p] + (1 - self.rho) * g**2
-    #         params[p] -= self.learning_rate * g / (np.sqrt(self.cache[p]) + self.epsilon)
     def update(self, params, grads):
         for key in params.keys():
             # Ensure that both parameters and gradients are numpy arrays
@@ -40,124 +35,75 @@ class NeuralNetwork:
         self.b2 = np.zeros(output_size)
         self.learning_rate = learning_rate
         self.optimizer = RMSpropOptimizer(learning_rate)
+        self.dropout_rate = 0.4
         print(f"w1:{self.w1.shape}\nb1:{self.b1.T.shape}\nw2:{self.w2.shape}\nb2:{self.b2.shape}")
 
     def forward(self, x):
         z1 = np.dot(x, self.w1) + self.b1
         a1 = np.tanh(z1)
+        a1 = self.dropout(a1, self.dropout_rate)
         z2 = np.dot(a1, self.w2) + self.b2
         a2 = np.tanh(z2)
         return a2, z2, a1, z1
     
+    def dropout(self, X, drop_probability):
+        keep_probability = 1 - drop_probability
+        mask = np.random.binomial(1, keep_probability, size=X.shape)
+        return mask * X / keep_probability
+    
     def mse_loss(self, y_true, y_pred):
         return ((y_true - y_pred) ** 2).mean()
     
-    
-    # def backward(self, x, y, output, z2, a1, z1):
-    #     # Calculate the loss for monitoring
-    #     loss = self.mse_loss(y, output)
-    #     output_error = -2 * (y - output) / y.size
-    #     output_delta = output_error * (1 - np.tanh(z2)**2)
-    #     print(f"output_delta shape:{output_delta.shape}")
-    #     z1_error = np.dot(output_delta, self.w2.T)
-    #     z1_delta = z1_error * (1 - np.tanh(z1)**2)
-    #     z1_delta = z1_delta.reshape(-1,1)
-    #     output_delta = output_delta.reshape(-1,1)
-    #     a1 = a1.reshape(-1,1)
-    #     x = x.reshape(-1,1)
-    #     print(f"z1_delta shape:{z1_delta.shape}")
-    #     # print(f"{self.w1.shape}{x.shape}")
-    #     # Gradients for weights and biases
-    #     w2_grad = np.dot(output_delta,a1.T)
-    #     b2_grad = np.sum(output_delta, axis=0)
-    #     w1_grad = np.dot(z1_delta, x.T)
-    #     b1_grad = np.sum(z1_delta, axis=0)
 
-    #     # Update weights and biases using RMSprop
-    #     self.optimizer.update({'w1': self.w1, 'b1': self.b1, 'w2': self.w2, 'b2': self.b2},
-    #                           {'w1': w1_grad, 'b1': b1_grad, 'w2': w2_grad, 'b2': b2_grad})
-        
-        # return loss
-    
-    # def backward(self, x, y, output, z2, a1, z1):
-    #     loss = self.mse_loss(y, output)
+    def backward(self, x, y, output, z2, a1, z1):
+        # Calculate output error using the derivative of MSE
+        output_error = -2 * (y - output) / y.size  # Assuming y is a numpy array
 
-    #     # Backward pass (gradient descent)
-    #     output_error = y - output  # error in output
-    #     output_delta = output_error  # assuming linear activation for output layer
+        output_delta = output_error * (1 - np.tanh(z2)**2)
 
-    #     z1_error = np.dot(output_delta, self.w2.T)
-    #     z1_delta = z1_error * (1 - np.power(a1, 2))  # derivative of tanh
+        z1_error = np.dot(output_delta, self.w2.T)
+        z1_delta = z1_error * (1 - np.tanh(z1)**2)
 
-    #     # Update weights and biases
-    #     self.w2 += np.outer(a1, output_delta) * self.learning_rate
-    #     self.b2 += output_delta * self.learning_rate
-    #     self.w1 += np.outer(x, z1_delta) * self.learning_rate
-    #     self.b1 += z1_delta * self.learning_rate
+        # Gradients for weights and biases
+        w2_grad = np.dot(a1.T, output_delta)
+        b2_grad = np.sum(output_delta, axis=0)
+        w1_grad = np.dot(x.T, z1_delta)
+        b1_grad = np.sum(z1_delta, axis=0)
 
-    #     return loss
-    
-    def backward(self, x, y_true, y_pred, z2, a1, z1):
-        # Compute the gradient of the loss with respect to the output of the last layer
-        d_loss_y_pred = 2 * (y_pred - y_true) / y_pred.shape[0]
-
-        # Gradient through the second tanh activation
-        d_z2 = d_loss_y_pred * (1 - np.tanh(z2)**2)
-
-        # Gradients with respect to weights and biases of the second layer
-        d_w2 = np.dot(a1.T, d_z2)
-        d_b2 = np.sum(d_z2, axis=0)
-
-        # Gradient through the first layer
-        d_a1 = np.dot(d_z2, self.w2.T)
-        d_z1 = d_a1 * (1 - np.tanh(z1)**2)
-
-        # Gradients with respect to weights and biases of the first layer
-        d_w1 = np.dot(x.T, d_z1)
-        d_b1 = np.sum(d_z1, axis=0)
-
-        # Update the weights and biases
-        self.w1 -= self.learning_rate * d_w1
-        self.w2 -= self.learning_rate * d_w2
-        self.b1 -= self.learning_rate * d_b1
-        self.b2 -= self.learning_rate * d_b2
+        # Update weights and biases using RMSprop
+        self.optimizer.update({'w1': self.w1, 'b1': self.b1, 'w2': self.w2, 'b2': self.b2},
+                            {'w1': w1_grad, 'b1': b1_grad, 'w2': w2_grad, 'b2': b2_grad})
 
         # Compute the loss (optional, for monitoring purposes)
-        loss = np.mean((y_true - y_pred) ** 2)
+        loss = np.mean((y - output) ** 2)
 
         return loss
 
-
-
-
-
-
 class DQNController(FlightController):
     def __init__(self,
-                state_size,
-                num_actions_per_propeller,
-                hidden_size=64, 
-                learning_rate=1e-4, 
-                gamma=0.99, 
+                state_size=3**4,
+                action_size=2,
+                hidden_size=48, 
+                learning_rate=0.05, 
+                gamma=0.95, 
                 epsilon=1.0, 
-                epsilon_decay=0.995, 
+                epsilon_decay=0.99, 
                 min_epsilon=0.01, 
                 memory_size=10000):
         super().__init__()
         self.state_size = state_size
-        self.num_actions_per_propeller = num_actions_per_propeller
+        self.action_size = action_size
         self.hidden_size = hidden_size
         self.learning_rate = learning_rate
         self.gamma = gamma
         self.memory = []  # Experience replay buffer
         self.memory_size = memory_size
-        self.num_episodes = 500 
-        self.batch_size = 64
+        self.num_episodes = 100
+        self.evaluation_interval = 5
+        self.batch_size = 512
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
-        self.action_space = self.discretize_action_space(self.num_actions_per_propeller)
-        self.action_size = len(self.action_space)
         self.model = self.build_model()
         self.target_model = NeuralNetwork(self.state_size, self.hidden_size, self.action_size, self.learning_rate)
 
@@ -172,21 +118,55 @@ class DQNController(FlightController):
         self.target_model.b1 = self.model.b1.copy()
         self.target_model.w2 = self.model.w2.copy()
         self.target_model.b2 = self.model.b2.copy()
+ 
 
-    def discretize_action_space(self, num_actions_per_propeller):
-        # Create a grid of actions based on the number of actions for each propeller
-        self.action_grid = np.linspace(0, 1, num_actions_per_propeller)
-        self.discrete_actions = np.array(np.meshgrid(self.action_grid, self.action_grid)).T.reshape(-1, 2)
-        return self.discrete_actions    
+    def get_state(self, drone:Drone):
 
-    def get_state(self, drone):
-        # Efficiently gather the state attributes from the drone object
-        target_x, target_y = drone.get_next_target()
-        return np.array([drone.x, drone.y, drone.velocity_x, drone.velocity_y, drone.pitch, drone.pitch_velocity, drone.thrust_left, drone.thrust_right, target_x, target_y])
+        target_point = drone.get_next_target()
+        dx = target_point[0] - drone.x
+        dy = target_point[1] - drone.y
+        velocity_y = drone.velocity_y
+        pitch = drone.pitch
+        pitch_velocity = drone.pitch_velocity
 
-    def get_reward(self, state, drone):
+        # Define the discretization steps for each component
+        step_size = 0.1  # e.g., 1 unit of space
+        pitch_step = np.pi / 9  # e.g., 10 degrees
+
+
+        # discretized_dx = 0 if dx < -0.1 else (2 if dx > 0.1 else 1)
+        # discretized_dy = 0 if dy >= 0 else 1
+        discretized_dy = 0 if dy < -0.1 else (2 if dy > 0.1 else 1)
+        # discretized_velocity_y = 0 if drone.velocity_y >= 0 else 1
+        discretized_velocity_y = 0 if velocity_y < -0.1 else (2 if velocity_y > 0.1 else 1)
+        # discretized_pitch = 0 if drone.pitch >= 0 else 1 
+        discretized_pitch = 0 if pitch < -0.1 else (2 if pitch > 0.1 else 1)
+        # discretized_pitch_velocity = 0 if drone.pitch_velocity >= 0 else 1
+        discretized_pitch_velocity = 0 if pitch_velocity < -0.2 else (2 if pitch_velocity > 0.2 else 1)
+   
+
+        # Combine into a single state index
+        state_index = (discretized_dy +
+                       discretized_velocity_y * 3**1 +
+                       discretized_pitch * 3**2 +
+                       discretized_pitch_velocity * 3**3 
+                       )
+        if(state_index < 0):
+            print("state index is negative")
+
+        # Total number of possible states
+        num_states = 3**4
+
+        # One-hot encode the state index
+        state_vector = np.zeros(num_states)
+        state_vector[state_index] = 1
+
+        return state_vector
+
+    def get_reward(self, drone):
         # Efficient computation of the reward using numpy operations
-        distance_to_target = np.hypot(drone.x - state[8], drone.y - state[9])
+        target_point = drone.get_next_target()
+        distance_to_target = np.hypot(drone.x - target_point[0], drone.y - target_point[1])
         reward = (
             100.0 * drone.has_reached_target_last_update -
             10.0 * distance_to_target -
@@ -201,26 +181,7 @@ class DQNController(FlightController):
         if len(self.memory) > self.memory_size:
             self.memory.pop(0)  # Remove the oldest experience if the memory is full
 
-    # def replay(self, batch_size):
-    #     minibatch_indices = np.random.choice(len(self.memory), batch_size, replace=False)
-    #     minibatch = [self.memory[i] for i in minibatch_indices]  # Retrieve experiences using indices
-    #     losses = []
-    #     for state, action, reward, next_state, done in minibatch:
-    #         target = reward
-    #         if not done:
-    #             q_next, _, _, _ = self.target_model.forward(next_state)
-    #             target = reward + self.gamma * np.amax(q_next)       
-    #         q_values, z2, a1, z1 = self.model.forward(state)
-    #         # print(action)
-    #         q_target = q_values.copy()
-    #         # print(q_target)
-    #         q_target[action] = target
-    #         # Perform a gradient descent step here to update the weights and biases
-    #         loss = self.model.backward(state, q_target, q_values, z2, a1, z1)
-    #         losses.append(loss)
-    #     average_loss = np.mean(losses)
-    #     return average_loss
-    def replay(self, batch_size):
+    def replay(self, batch_size, num_iterations=5):
         minibatch_indices = np.random.choice(len(self.memory), batch_size, replace=False)
         minibatch = [self.memory[i] for i in minibatch_indices]
 
@@ -236,7 +197,6 @@ class DQNController(FlightController):
 
         # Batch forward pass for next states
         q_next, _, _, _ = self.target_model.forward(next_states)
-
         # Vectorized target calculation
         targets = rewards + self.gamma * np.amax(q_next, axis=1) * (~dones)
 
@@ -245,45 +205,81 @@ class DQNController(FlightController):
         q_target[np.arange(batch_size), actions] = targets
 
         # Batch backward pass
-        loss = self.model.backward(states, q_target, q_values, z2, a1, z1 )  # Add other necessary parameters
-        average_loss = np.mean(loss)
+        # Loop for multiple backward passes
+        total_loss = 0
+        for _ in range(num_iterations):
+            # Call backward pass
+            loss = self.model.backward(states, q_target, q_values, z2, a1, z1)
+            total_loss += loss
+
+        average_loss = total_loss / num_iterations
         return average_loss
 
     def act(self, state):
-
         # Epsilon-greedy action selection
         if np.random.rand() <= self.epsilon:
-            return np.random.choice(len(self.discrete_actions))
+            return np.random.randint(self.action_size)
         # print(state)
         q_values,_,_,_ = self.model.forward(state)
         return np.argmax(q_values)
     
-    def get_thrust(self, drone: Drone):
+    def discrete_actions(self, action_index, drone):
+
+        best_param_heuristic_1 = {'ky': 3, 'kx': 2.6, 'abs_pitch_delta': 0.1, 'abs_thrust_delta':0.4}
+        best_param_heuristic_2 = {'k': 8.25, 'b': 0.3, 'k_theta': 9.5, 'b_theta': 0.3, 'theta_target': 7}
+        
+        ky = best_param_heuristic_1['ky']
+        kx = best_param_heuristic_1['kx']
+        abs_pitch_delta = best_param_heuristic_1['abs_pitch_delta']
+        abs_thrust_delta = best_param_heuristic_1['abs_thrust_delta']
+
+        k = best_param_heuristic_2['k']
+        b = best_param_heuristic_2['b']
+        k_theta = best_param_heuristic_2['k_theta']
+        b_theta = best_param_heuristic_2['b_theta']
+        theta_target = best_param_heuristic_2['theta_target']
+
+        if action_index == 0:
+            thrust_left, thrust_right = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
+        else:
+            thrust_left, thrust_right = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
+        return thrust_left, thrust_right
+    
+    def get_thrusts(self, drone: Drone):
         state = self.get_state(drone)
         q_values, _, _, _ = self.model.forward(state)
-        thrust_left, thrust_right = self.discrete_actions[np.argmax(q_values)]
+        thrust_left, thrust_right = self.discrete_actions(np.argmax(q_values), drone)
         return (thrust_left, thrust_right)
     
     def step(self, drone, state, action_index):
         # Convert discrete action back to continuous action
-        action = self.discrete_actions[action_index]
+        action = self.discrete_actions(action_index, drone)
         drone.set_thrust(action)                   
         drone.step_simulation(self.get_time_interval())   
         # print(drone.thrust_left, drone.thrust_right) 
 
         next_state = self.get_state(drone)
-        reward = self.get_reward(next_state, drone)
+        reward = self.get_reward(drone)
         done = drone.has_reached_target_last_update   
+        if done:
+            self.target_index += 1
         return next_state, reward, done
     
     def train(self):
+
+        evaluation_epochs = []
+        cumulative_rewards = []
+        best_performance = float('-inf') 
+
         for e in range(self.num_episodes):
             # Reset the environment here and get the initial state
             drone = self.init_drone()               # flight controller init_drone method used here
             state = self.get_state(drone) 
 
             total_reward = 0
-            target_index = 0
+            self.target_index = 0
+            total_loss = 0
+            replay_count = 0
 
             for time in range(self.get_max_simulation_steps()):
                 action_index = self.act(state)
@@ -293,34 +289,80 @@ class DQNController(FlightController):
                 self.remember(state, action_index, reward, next_state, done)
                 total_reward += reward
             
-                if done:
-                    target_index += 1
-                    if (target_index == 4):
-                        print(f"Episode: {e + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
-                        break
+                if (self.target_index == 5):
+                    print(f"Done Epoch: {e + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
+                    break
+
                 state = next_state
+
                 if len(self.memory) > self.batch_size:
                     average_loss = self.replay(self.batch_size)
-                    # print(f"Episode: {e + 1}, Step: {time + 1}, Average Loss: {average_loss:.4f}")
+                    total_loss += average_loss
+                    replay_count += 1
+
+            # Compute and print the mean loss for the episode
+            if replay_count > 0:
+                mean_loss = total_loss / replay_count
+                print(f"Episode: {e + 1}, Mean Loss: {mean_loss:.4f}, Cumulative Reward / Step: {total_reward/self.get_max_simulation_steps()}")
+
+            self.update_target_network()                
+
+            # Save the model periodically or at the end of training
+            if e % self.evaluation_interval == 0 or e == self.num_episodes - 1:
+                performance = self.evaluate_performance()
+                cumulative_rewards.append(performance)
+                evaluation_epochs.append(e + 1)
+
+                # Print cumulative reward at the end of each episode
+                print(f"Epoch {e+1}: Cumulative reward / Step: {performance}")
+
+                if performance >= best_performance:
+                    best_performance = performance
+                    print("Improved!")
+                    self.save(f"./Results/dqn/dqn_controller_{e}.npz")
 
             if self.epsilon > self.min_epsilon:
                 self.epsilon *= self.epsilon_decay
-
-            self.update_target_network()
-            # Print cumulative reward at the end of each episode
-            print(f"Episode: {e + 1} finished with Total Reward: {total_reward}")
-
-            # Save the model periodically or at the end of training
-            if e % 100 == 0 or e == self.num_episodes - 1:
-                self.save(f"dqn_controller_{e}.npz")
+                
         print("Training finished.")
             
+    def evaluate_performance(self):
+        """
+        Evaluate the performance of the current controller settings.
 
-    def save(self, filename):
+        Returns:
+            float: A performance score, higher is better.
+        """
+        total_performance = 0
+        num_eval_episodes = 3  # Number of episodes to run for evaluation
+
+        for _ in range(num_eval_episodes):
+            drone = self.init_drone()  # Initialize the drone for each evaluation episode
+            episode_performance = 0
+
+            for _ in range(self.get_max_simulation_steps()):
+                # Get the thrusts based on current ky and kx values
+                thrusts = self.get_thrusts(drone)
+                drone.set_thrust(thrusts)
+
+                # Update the drone's state
+                drone.step_simulation(self.get_time_interval())
+
+                # Calculate the reward for the current step
+                reward = self.get_reward(drone)
+                episode_performance += reward
+
+            # Average performance over the episode
+            total_performance += episode_performance / self.get_max_simulation_steps()
+
+        # Average performance over all evaluation episodes
+        return total_performance / num_eval_episodes
+    
+    def save(self, filename="final"):
         np.savez(filename, w1=self.model.w1, b1=self.model.b1, w2=self.model.w2, b2=self.model.b2)
 
-    def load(self0):
-        filename = "dqn_controller_400.npz"
+    def load(self):
+        filename = "dqn_controller_499.npz"
         data = np.load(filename)
         self.model.w1 = data['w1']
         self.model.b1 = data['b1']
@@ -328,45 +370,5 @@ class DQNController(FlightController):
         self.model.b2 = data['b2']
         self.update_target_network()
 
-
-# # ReplayBuffer class definition
-# class ReplayBuffer:
-#     def __init__(self, capacity):
-#         self.capacity = capacity
-#         self.buffer = []
-#         self.position = 0
-
-#     def add(self, state, action, reward, next_state, done):
-#         if len(self.buffer) < self.capacity:
-#             self.buffer.append(None)
-#         self.buffer[self.position] = (state, action, reward, next_state, done)
-#         self.position = (self.position + 1) % self.capacity
-
-#     def sample(self, batch_size):
-#         return random.sample(self.buffer, batch_size)
-
-#     def __len__(self):
-#         return len(self.buffer)
-
-
-# def plot_metrics(metrics):
-#     # metrics is a dictionary containing lists of rewards, losses, etc.
-#     plt.figure(figsize=(12, 4))
-#     plt.subplot(1, 3, 1)
-#     plt.plot(metrics['cumulative_rewards'], label='Cumulative Rewards')
-#     plt.title('Rewards Over Time')
-#     plt.legend()
-
-#     plt.subplot(1, 3, 2)
-#     plt.plot(metrics['losses'], label='Loss')
-#     plt.title('Loss Over Time')
-#     plt.legend()
-
-#     plt.subplot(1, 3, 3)
-#     plt.plot(metrics['epsilons'], label='Epsilon')
-#     plt.title('Epsilon Over Time')
-#     plt.legend()
-
-#     plt.show()
 
 

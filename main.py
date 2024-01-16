@@ -10,7 +10,7 @@ from flight_controller import FlightController
 #---------------------WRITE YOUR OWN CODE HERE------------------------#
 from heuristic_controller import HeuristicController
 from heuristic_controller_new import CustomController
-# from dqn_controller import DQNController, RMSpropOptimizer, NeuralNetwork
+from dqn_controller import DQNController, RMSpropOptimizer, NeuralNetwork
 from tuning import HeuristicController
 # from tuning_2 import CustomController
 # from custom_controller import CustomController
@@ -19,12 +19,8 @@ from q_learning import QLearningController, heuristic1, heuristic2
 def generate_controller() -> FlightController:
     # return HeuristicController() # <--- Replace this with your own written controller
 
-    # # Instantiate DQNController with appropriate sizes (placeholders)
-    # state_size = 10  # Assuming 8 state features as per get_state definition
-    # action_size = 4  # Assuming we discretize each propeller into 6 actions (up/down)
-    # controller = DQNController(state_size, action_size)
-    # controller.discretize_action_space(action_size)
-    return QLearningController()
+    return DQNController()
+    # return QLearningController()
     # return CustomController()
     # return controller
 
