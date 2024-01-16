@@ -35,7 +35,8 @@ class HeuristicController(FlightController):
         self.min_abs_thrust_delta = 0.1
         self.max_abs_thrust_delta = 0.5
 
-        self.action_changes = np.linspace(-0.2, 0.2, num=5) 
+        self.action_changes_k = np.linspace(-1, 3, num=5) 
+        self.action_changes_delta = np.linspace(-0.1, 0.2, num=5)
 
         self.q_table = np.zeros((self.ky_size, self.kx_size, self.abs_pitch_delta_size, self.abs_thrust_delta_size, 5, 5, 5, 5))
         # self.q_table = np.zeros((self.abs_pitch_delta_size, self.abs_thrust_delta_size, 10, 10))
@@ -44,8 +45,8 @@ class HeuristicController(FlightController):
         self.epsilon_decay = 0.9
         self.learning_rate = 0.1
         self.discount_factor = 0.95
-        self.episodes = 2000
-        self.evaluation_interval = 50
+        self.episodes = 1500
+        self.evaluation_interval = 30
 
 
     def get_max_simulation_steps(self):
@@ -116,15 +117,15 @@ class HeuristicController(FlightController):
     
     def random_action(self):
         # Generate a random action for each parameter
-        action_ky = random.choice(self.action_changes)
-        action_kx = random.choice(self.action_changes)
-        action_abs_pitch_delta = random.choice(self.action_changes)
-        action_abs_thrust_delta = random.choice(self.action_changes)
+        action_ky = random.choice(self.action_changes_k)
+        action_kx = random.choice(self.action_changes_k)
+        action_abs_pitch_delta = random.choice(self.action_changes_delta)
+        action_abs_thrust_delta = random.choice(self.action_changes_delta)
         # Map the float action to its corresponding index
-        action_ky_index = np.where(self.action_changes == action_ky)[0][0]
-        action_kx_index = np.where(self.action_changes == action_kx)[0][0]
-        action_abs_pitch_delta_index = np.where(self.action_changes == action_abs_pitch_delta)[0][0]
-        action_abs_thrust_delta_index = np.where(self.action_changes == action_abs_thrust_delta)[0][0]
+        action_ky_index = np.where(self.action_changes_k == action_ky)[0][0]
+        action_kx_index = np.where(self.action_changes_k == action_kx)[0][0]
+        action_abs_pitch_delta_index = np.where(self.action_changes_delta == action_abs_pitch_delta)[0][0]
+        action_abs_thrust_delta_index = np.where(self.action_changes_delta == action_abs_thrust_delta)[0][0]
         return (action_ky_index, action_kx_index, action_abs_pitch_delta_index, action_abs_thrust_delta_index)
     
 
@@ -173,10 +174,10 @@ class HeuristicController(FlightController):
 
     def adjust_parameters(self, action):
         # Map the action indices back to float values
-        action_ky = self.action_changes[action[0]]
-        action_kx = self.action_changes[action[1]]
-        action_abs_pitch_delta = self.action_changes[action[2]]
-        action_abs_thrust_delta = self.action_changes[action[3]]
+        action_ky = self.action_changes_k[action[0]]
+        action_kx = self.action_changes_k[action[1]]
+        action_abs_pitch_delta = self.action_changes_delta[action[2]]
+        action_abs_thrust_delta = self.action_changes_delta[action[3]]
 
         # Adjust the parameters based on the action
         self.ky += action_ky

@@ -34,8 +34,8 @@ class HeuristicController2(FlightController):
         self.b_theta_size = 5
 
          # Action space
-        self.action_changes_k = np.linspace(-1, 10, num=5) 
-        self.action_changes_b = np.linspace(-0.1, 1, num=5)
+        self.action_changes_k = np.linspace(-1, 4, num=5) 
+        self.action_changes_b = np.linspace(-0.1, 0.3, num=5)
 
         # Initialize Q-table
         self.q_table = np.zeros((self.k_size, self.b_size, self.k_theta_size, self.b_theta_size, 5, 5, 5, 5))
@@ -47,7 +47,7 @@ class HeuristicController2(FlightController):
         self.epsilon_decay = 0.995
         self.learning_rate = 0.01
         self.discount_factor = 0.999
-        self.episodes = 1000
+        self.episodes = 1500
         self.evaluation_interval = 30
 
     def get_max_simulation_steps(self):
