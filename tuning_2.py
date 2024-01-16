@@ -34,8 +34,8 @@ class HeuristicController2(FlightController):
         self.b_theta_size = 5
 
          # Action space
-        self.action_changes_k = np.linspace(-1, 4, num=5) 
-        self.action_changes_b = np.linspace(-0.1, 0.3, num=5)
+        self.action_changes_k = np.linspace(-1, 1, num=5) 
+        self.action_changes_b = np.linspace(-0.15, 0.15, num=5)
 
         # Initialize Q-table
         self.q_table = np.zeros((self.k_size, self.b_size, self.k_theta_size, self.b_theta_size, 5, 5, 5, 5))

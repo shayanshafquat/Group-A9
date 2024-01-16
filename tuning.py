@@ -21,7 +21,7 @@ class HeuristicController(FlightController):
         self.max_kx = 3.0  # Example maximum value for kx
 
         self.abs_pitch_delta = self.initial_abs_pitch_delta
-        self.abs_thrust_delta = self.initial_abs_thrust_delta
+        self.abs_thrust_delta= self.initial_abs_thrust_delta
         """Creates a heuristic flight controller with some specified parameters
 
         """
@@ -35,8 +35,8 @@ class HeuristicController(FlightController):
         self.min_abs_thrust_delta = 0.1
         self.max_abs_thrust_delta = 0.5
 
-        self.action_changes_k = np.linspace(-1, 3, num=5) 
-        self.action_changes_delta = np.linspace(-0.1, 0.2, num=5)
+        self.action_changes_k = np.linspace(-0.3, 0.3, num=5) 
+        self.action_changes_delta = np.linspace(-0.05, 0.05, num=5)
 
         self.q_table = np.zeros((self.ky_size, self.kx_size, self.abs_pitch_delta_size, self.abs_thrust_delta_size, 5, 5, 5, 5))
         # self.q_table = np.zeros((self.abs_pitch_delta_size, self.abs_thrust_delta_size, 10, 10))
