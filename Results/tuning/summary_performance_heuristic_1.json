@@ -1,0 +1,50 @@
+[
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.8,
+        "epsilon_decay": 0.9,
+        "best_performance": -5.32441126861391
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.8,
+        "epsilon_decay": 0.99,
+        "best_performance": -5.32441126861391
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.9,
+        "epsilon_decay": 0.9,
+        "best_performance": -5.32441126861391
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.9,
+        "epsilon_decay": 0.99,
+        "best_performance": -5.32441126861391
+    },
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.8,
+        "epsilon_decay": 0.9,
+        "best_performance": -4.961823265013694
+    },
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.8,
+        "epsilon_decay": 0.99,
+        "best_performance": -4.9376116341312075
+    },
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.9,
+        "epsilon_decay": 0.9,
+        "best_performance": -4.863368763528116
+    },
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.9,
+        "epsilon_decay": 0.99,
+        "best_performance": -5.007576903049841
+    }
+]
