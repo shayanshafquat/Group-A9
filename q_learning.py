@@ -5,6 +5,8 @@ import numpy as np
 import json
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
+import math
 
 
 def heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone: Drone) -> Tuple[float, float]:
@@ -65,8 +67,8 @@ def heuristic2(k, b, k_theta, b_theta, theta_target, drone: Drone) -> Tuple[floa
 
 class QLearningController(FlightController):
     def __init__(self,
-                 state_size=81,
-                 action_size=2,
+                 state_size=27*4,
+                 action_size=4,
                  learning_rate=0.2,
                  gamma=0.95,
                  epsilon=1):
@@ -78,7 +80,7 @@ class QLearningController(FlightController):
         self.epsilon = epsilon
         self.epsilon_decay = 0.85
         self.min_epsilon = 0.01
-        self.epochs = 2000
+        self.epochs = 1000
         self.evaluation_interval = 40
 
         self.q_values = np.zeros((state_size, action_size))
@@ -103,49 +105,121 @@ class QLearningController(FlightController):
         target_point = drone.get_next_target()
         dx = target_point[0] - drone.x
         dy = target_point[1] - drone.y
+        distance = math.sqrt(dx**2 + dy**2)
         velocity_y = drone.velocity_y
         pitch = drone.pitch
         pitch_velocity = drone.pitch_velocity
+
         # Define the discretization steps for each component
-        step_size = 0.1  # e.g., 1 unit of space
-        pitch_step = np.pi / 9  # e.g., 10 degrees
+        dist_bin = [0.1, 0.5] # 3
+        # dist_bin = [0.1, 0.3, 0.7] #4
 
-        # Discretize each component with clamping
-        # discretized_dx = self.discretize_with_clamp(dx, -0.2, 0.2, step_size) + 4
-        # discretized_dy = self.discretize_with_clamp(dy, -0.2, 0.2, step_size) + 4
-        # discretized_velocity_y = 0 if drone.velocity_y >= 0 else 1
-        # discretized_pitch = self.discretize_with_clamp(drone.pitch, -0.5, 0.5, pitch_step)
-        # discretized_pitch_velocity = self.discretize_with_clamp(drone.pitch_velocity, -1, 1, pitch_step)
+        vel_bin = [0.1, 0.25] # 3
+        # vel_bin = [0.05, 0.15, 0.3]  #4
 
-        # discretized_dx = 0 if dx < -0.1 else (2 if dx > 0.1 else 1)
-        # discretized_dy = 0 if dy >= 0 else 1
-        discretized_dy = 0 if dy < -0.1 else (2 if dy > 0.1 else 1)
-        # discretized_velocity_y = 0 if drone.velocity_y >= 0 else 1
-        discretized_velocity_y = 0 if velocity_y < -0.1 else (2 if velocity_y > 0.1 else 1)
-        # discretized_pitch = 0 if drone.pitch >= 0 else 1 
-        discretized_pitch = 0 if pitch < -0.1 else (2 if pitch > 0.1 else 1)
-        # discretized_pitch_velocity = 0 if drone.pitch_velocity >= 0 else 1
-        discretized_pitch_velocity = 0 if pitch_velocity < -0.2 else (2 if pitch_velocity > 0.2 else 1)
+        pitch_vel_bin = [0.1, 0.5] #3
+        # pitch_vel_bin = [0.05, 0.2, 0.65] #4
+
+        discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if distance <= edge), len(vel_bin)) # 3 or 5
+        discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if distance <= edge), len(pitch_vel_bin)) # 3
+        discretized_dx = 0 if dx >=0 else 1  # 2
+        discretized_dy = 0 if dy >= 0 else 1  # 2
+        # discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
+        discretized_dist = next((i for i, edge in enumerate(dist_bin) if distance <= edge), len(dist_bin)) #3 or 
    
 
         # Combine into a single state index
-        state_index = (discretized_dy +
-                       discretized_velocity_y * 3**1 +
-                       discretized_pitch * 3**2 +
-                       discretized_pitch_velocity * 3**3 
+        state_index = (discretized_dx +
+                       discretized_dy * 2+
+                       discretized_velocity_y * 2*2 +
+                       discretized_pitch_velocity * 2*2*3 +
+                       discretized_dist * 2*2*3*3 
                        )
+        # state_index = (discretized_dx +
+        #                discretized_dy * 2+
+        #                discretized_velocity_y * 2*2 +
+        #                discretized_pitch_velocity * 2*2*4 +
+        #                discretized_dist * 2*2*4*4 
+        #                )
         if(state_index < 0):
             print("state index is negative")
         return state_index
 
 
-    # def generate_action_space(drone):
-    #     actions = []
+    # def discrete_actions(self, action_index, drone):
     #     # Load the parameters from the JSON file
-    #     # with open('heuristic_controller_1_parameters.json', 'r') as file:
-    #     #     best_params_heuristic_1 = json.load(file)
+    #     with open('./Results/tuning/all_best_parameters_heuristic_1.json', 'r') as file:
+    #         data_h1 = json.load(file)
+
+    #     sorted_h1_data = sorted(data_h1, key=lambda x: x['performance'], reverse=True)
+    #     top_3_h1_params = sorted_h1_data[:3]
+
+    #     with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'r') as file:
+    #         data_h2 = json.load(file)
+
+    #     sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)
+    #     top_3_h2_params = sorted_h2_data[:3]
+
+    #     # Check the action_index and set parameters accordingly
+    #     if action_index in [0, 1, 2]:  # Heuristic 1 parameters
+    #         params = top_3_h1_params[action_index]['parameters']
+    #         thrust_left, thrust_right = heuristic1(params['ky'],
+    #                                               params['kx'],
+    #                                               params['abs_pitch_delta'],
+    #                                               params['abs_thrust_delta'],
+    #                                               drone)
+    #     elif action_index in [3, 4, 5]:  # Heuristic 2 parameters
+    #         params = top_3_h2_params[action_index - 3]['parameters']
+    #         theta_target = 7
+    #         thrust_left, thrust_right = heuristic2(params['k'],
+    #                                                params['b'],
+    #                                                params['k_theta'],
+    #                                                params['b_theta'],
+    #                                                self.theta_target,
+    #                                                drone)
+    #     else:
+    #         raise ValueError("Invalid action_index")
+    #     return thrust_left, thrust_right
+    
+    def discrete_actions(self, action_index, drone):
+        # Load the parameters from the JSON file
+        with open('./Results/tuning/all_best_parameters_heuristic_1.json', 'r') as file:
+            data_h1 = json.load(file)
+
+        sorted_h1_data = sorted(data_h1, key=lambda x: x['performance'], reverse=True)
+        top_h1_params = sorted_h1_data[:2]
+
+        with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'r') as file:
+            data_h2 = json.load(file)
+
+        sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)
+        top_h2_params = sorted_h2_data[:2]
+
+        # Check the action_index and set parameters accordingly
+        if action_index in [0, 1]:  # Heuristic 1 parameters
+            params = top_h1_params[action_index]['parameters']
+            thrust_left, thrust_right = heuristic1(params['ky'],
+                                                  params['kx'],
+                                                  params['abs_pitch_delta'],
+                                                  params['abs_thrust_delta'],
+                                                  drone)
+        elif action_index in [2, 3]:  # Heuristic 2 parameters
+            params = top_h2_params[action_index - 3]['parameters']
+            theta_target = 7
+            thrust_left, thrust_right = heuristic2(params['k'],
+                                                   params['b'],
+                                                   params['k_theta'],
+                                                   params['b_theta'],
+                                                   theta_target,
+                                                   drone)
+        else:
+            raise ValueError("Invalid action_index")
+        return thrust_left, thrust_right
+    
+    # def discrete_actions(self, action_index, drone):
+
     #     best_param_heuristic_1 = {'ky': 3, 'kx': 2.6, 'abs_pitch_delta': 0.1, 'abs_thrust_delta':0.4}
-    #     best_param_heuristic_2 = {'k': 3.75, 'b': 0.3, 'k_theta': 2.25, 'b_theta': 0.3, 'theta_target': 7}
+    #     best_param_heuristic_2 = {'k': 8.25, 'b': 0.3, 'k_theta': 9.5, 'b_theta': 0.3, 'theta_target': 7}
         
     #     ky = best_param_heuristic_1['ky']
     #     kx = best_param_heuristic_1['kx']
@@ -158,39 +232,11 @@ class QLearningController(FlightController):
     #     b_theta = best_param_heuristic_2['b_theta']
     #     theta_target = best_param_heuristic_2['theta_target']
 
-    #     # with open('heuristic_controller_2_parameters.json', 'r') as file:
-    #     #     best_params_heuristic_2 = json.load(file)
-
-    #     # for param1 in best_params_heuristic_1:
-    #     #     for param2 in best_params_heuristic_2:
-    #             # ... include other parameters if necessary
-    #     thrust_left1, thrust_right1 = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
-    #     thrust_left2, thrust_right2 = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
-    #     actions.append((thrust_left1, thrust_right1))
-    #     actions.append((thrust_left2, thrust_right2))
-    #     return np.array(actions)
-    
-    def discrete_actions(self, action_index, drone):
-
-        best_param_heuristic_1 = {'ky': 3, 'kx': 2.6, 'abs_pitch_delta': 0.1, 'abs_thrust_delta':0.4}
-        best_param_heuristic_2 = {'k': 8.25, 'b': 0.3, 'k_theta': 9.5, 'b_theta': 0.3, 'theta_target': 7}
-        
-        ky = best_param_heuristic_1['ky']
-        kx = best_param_heuristic_1['kx']
-        abs_pitch_delta = best_param_heuristic_1['abs_pitch_delta']
-        abs_thrust_delta = best_param_heuristic_1['abs_thrust_delta']
-
-        k = best_param_heuristic_2['k']
-        b = best_param_heuristic_2['b']
-        k_theta = best_param_heuristic_2['k_theta']
-        b_theta = best_param_heuristic_2['b_theta']
-        theta_target = best_param_heuristic_2['theta_target']
-
-        if action_index == 0:
-            thrust_left, thrust_right = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
-        else:
-            thrust_left, thrust_right = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
-        return thrust_left, thrust_right
+    #     if action_index == 0:
+    #         thrust_left, thrust_right = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
+    #     else:
+    #         thrust_left, thrust_right = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
+    #     return thrust_left, thrust_right
 
     def get_thrusts(self, drone: Drone):
         state = self.get_state(drone)
@@ -254,7 +300,7 @@ class QLearningController(FlightController):
             float: A performance score, higher is better.
         """
         total_performance = 0
-        num_eval_episodes = 10  # Number of episodes to run for evaluation
+        num_eval_episodes = 3  # Number of episodes to run for evaluation
 
         for _ in range(num_eval_episodes):
             drone = self.init_drone()  # Initialize the drone for each evaluation episode
@@ -279,24 +325,53 @@ class QLearningController(FlightController):
         return total_performance / num_eval_episodes
 
     def train(self):
-        # Ensure the Results directory exists
-        if not os.path.exists('./Results'):
-            os.makedirs('./Results')
+        learning_rates = [0.05, 0.01]
+        discount_factors = [0.85, 0.95]
+        epsilon_decays = [0.995, 0.99]
 
-        plot_filename = (
-            f"./Plots/q-learning/training_plot_"
-            f"lr{self.learning_rate}_"
-            f"gamma{self.gamma}_"
-            f"epsdecay{self.epsilon_decay}_"
-            f"epochs{self.epochs}_"
-            f"evalint{self.evaluation_interval}.png"
-        )
+        summary_performance = []
+
+        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
+        current_run = 0
+
+        for lr in learning_rates:
+            for df in discount_factors:
+                for ed in epsilon_decays:
+                    self.__init__()
+                    current_run += 1
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+
+                    self.learning_rate = lr
+                    self.discount_factor = df
+                    self.epsilon_decay = ed
+
+                    cumulative_rewards, evaluation_epochs, best_performance = self.run_training_sequence()
+
+                    # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
+                    combined_data = np.column_stack((evaluation_epochs, cumulative_rewards))
+                    np.save(f'./Results/training/q_learning_lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
+
+                    # Append best performance data to the list
+                    summary_performance.append({
+                        'learning_rate': lr,
+                        'discount_factor': df,
+                        'epsilon_decay': ed,
+                        'best_performance': best_performance
+                    })
+
+        # Save summary_performance as a CSV file
+        df_summary = pd.DataFrame(summary_performance)
+        df_summary.to_csv(f'./Results/training/summary_performance_q_learning_{self.state_size}_{self.action_size}.csv', index=False)
+        print("Saved summary and Cumulative reward results")
+
+    def run_training_sequence(self):
+        # Ensure the Results directory exists
         evaluation_epochs = []
         cumulative_rewards = [] 
+        best_performance = float('-inf') 
         
         for epoch in range(self.epochs):
-            drone = self.init_drone()   
-            best_performance = float('-inf')            # flight controller init_drone method used here
+            drone = self.init_drone()              # flight controller init_drone method used here
             
             state = self.get_state(drone)               #Discretize state
             self.current_state = state
@@ -320,36 +395,27 @@ class QLearningController(FlightController):
                 self.current_state = next_state
                 
                 if self.target_index == 5:
-                    print(f"Done Epoch: {epoch + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
+                    print(f"Done Epoch: {epoch + 1}, Cumulative reward / step: {total_reward}, Steps: {time + 1}")
                     break
             
-            if epoch % self.evaluation_interval == 0:
+            if epoch % self.evaluation_interval == 0 or epoch == self.epochs - 1:
                 performance = self.evaluate_performance()
                 cumulative_rewards.append(performance)  # Store the cumulative reward
                 evaluation_epochs.append(epoch + 1)  # Store the epoch number
 
+                print(f"Episode {epoch+1}: Cumulative reward / step: {performance}")
+
                 if performance >= best_performance:
                     best_performance = performance
                     self.save()
-                print(f"Episode {epoch+1}: Cumulative reward: {performance}")
+                    print(f"Improve performance: {performance}")
+                
 
             # Decrease epsilon
             if self.epsilon > self.min_epsilon:
                 self.epsilon *= self.epsilon_decay
-        # Plotting the cumulative rewards at evaluation points
-        plt.figure(figsize=(10, 6))
-        plt.plot(evaluation_epochs, cumulative_rewards, label='Cumulative Reward')
-        plt.xlabel('Evaluation Epochs')
-        plt.ylabel('Cumulative Reward')
-        plt.title('Training Performance at Evaluation Intervals')
-
-        xticks = [epoch for epoch in evaluation_epochs if epoch % 1000 == 0 or epoch == 1]
-        plt.xticks(ticks=xticks, labels=[str(epoch) for epoch in xticks])
-        plt.legend()
-        
-        # Saving the plot with the same filename format
-        plt.savefig(plot_filename)
-        print(f"Saved plot to {plot_filename}")
+        print("Training finished")
+        return cumulative_rewards, evaluation_epochs, best_performance
 
     def save(self):
         filename = (

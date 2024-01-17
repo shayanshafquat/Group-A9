@@ -2,7 +2,10 @@ from flight_controller import FlightController
 from drone import Drone
 from typing import Tuple
 import numpy as np
+import json
 from q_learning import heuristic1, heuristic2
+import pandas as pd
+import math
 
 class RMSpropOptimizer:
     def __init__(self, learning_rate=0.001, rho=0.9, epsilon=1e-08):
@@ -81,9 +84,9 @@ class NeuralNetwork:
 
 class DQNController(FlightController):
     def __init__(self,
-                state_size=3**4,
-                action_size=2,
-                hidden_size=48, 
+                state_size=27*4,
+                action_size=4,
+                hidden_size=64, 
                 learning_rate=0.05, 
                 gamma=0.95, 
                 epsilon=1.0, 
@@ -125,37 +128,47 @@ class DQNController(FlightController):
         target_point = drone.get_next_target()
         dx = target_point[0] - drone.x
         dy = target_point[1] - drone.y
+        distance = math.sqrt(dx**2 + dy**2)
         velocity_y = drone.velocity_y
         pitch = drone.pitch
         pitch_velocity = drone.pitch_velocity
 
         # Define the discretization steps for each component
-        step_size = 0.1  # e.g., 1 unit of space
-        pitch_step = np.pi / 9  # e.g., 10 degrees
+        dist_bin = [0.1, 0.5] # 3
+        # dist_bin = [0.1, 0.3, 0.7] #4
 
+        vel_bin = [0.1, 0.25] # 3
+        # vel_bin = [0.05, 0.15, 0.3]  #4
 
-        # discretized_dx = 0 if dx < -0.1 else (2 if dx > 0.1 else 1)
-        # discretized_dy = 0 if dy >= 0 else 1
-        discretized_dy = 0 if dy < -0.1 else (2 if dy > 0.1 else 1)
-        # discretized_velocity_y = 0 if drone.velocity_y >= 0 else 1
-        discretized_velocity_y = 0 if velocity_y < -0.1 else (2 if velocity_y > 0.1 else 1)
-        # discretized_pitch = 0 if drone.pitch >= 0 else 1 
-        discretized_pitch = 0 if pitch < -0.1 else (2 if pitch > 0.1 else 1)
-        # discretized_pitch_velocity = 0 if drone.pitch_velocity >= 0 else 1
-        discretized_pitch_velocity = 0 if pitch_velocity < -0.2 else (2 if pitch_velocity > 0.2 else 1)
+        pitch_vel_bin = [0.1, 0.5] #3
+        # pitch_vel_bin = [0.05, 0.2, 0.65] #4
+
+        discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if distance <= edge), len(vel_bin)) # 3 or 5
+        discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if distance <= edge), len(pitch_vel_bin)) # 3
+        discretized_dx = 0 if dx >=0 else 1  # 2
+        discretized_dy = 0 if dy >= 0 else 1  # 2
+        # discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
+        discretized_dist = next((i for i, edge in enumerate(dist_bin) if distance <= edge), len(dist_bin)) #3 or 
    
 
         # Combine into a single state index
-        state_index = (discretized_dy +
-                       discretized_velocity_y * 3**1 +
-                       discretized_pitch * 3**2 +
-                       discretized_pitch_velocity * 3**3 
+        state_index = (discretized_dx +
+                       discretized_dy * 2+
+                       discretized_velocity_y * 2*2 +
+                       discretized_pitch_velocity * 2*2*3 +
+                       discretized_dist * 2*2*3*3 
                        )
+        # state_index = (discretized_dx +
+        #                discretized_dy * 2+
+        #                discretized_velocity_y * 2*2 +
+        #                discretized_pitch_velocity * 2*2*4 +
+        #                discretized_dist * 2*2*4*4 
+        #                )
         if(state_index < 0):
             print("state index is negative")
 
         # Total number of possible states
-        num_states = 3**4
+        num_states = self.state_size
 
         # One-hot encode the state index
         state_vector = np.zeros(num_states)
@@ -181,7 +194,7 @@ class DQNController(FlightController):
         if len(self.memory) > self.memory_size:
             self.memory.pop(0)  # Remove the oldest experience if the memory is full
 
-    def replay(self, batch_size, num_iterations=5):
+    def replay(self, batch_size, num_iterations=3):
         minibatch_indices = np.random.choice(len(self.memory), batch_size, replace=False)
         minibatch = [self.memory[i] for i in minibatch_indices]
 
@@ -223,27 +236,97 @@ class DQNController(FlightController):
         q_values,_,_,_ = self.model.forward(state)
         return np.argmax(q_values)
     
+    # def discrete_actions(self, action_index, drone):
+    #     # Load the parameters from the JSON file
+    #     with open('./Results/tuning/all_best_parameters_heuristic_1.json', 'r') as file:
+    #         data_h1 = json.load(file)
+
+    #     sorted_h1_data = sorted(data_h1, key=lambda x: x['performance'], reverse=True)
+    #     top_3_h1_params = sorted_h1_data[:3]
+
+    #     with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'r') as file:
+    #         data_h2 = json.load(file)
+
+    #     sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)
+    #     top_3_h2_params = sorted_h2_data[:3]
+
+    #     # Check the action_index and set parameters accordingly
+    #     if action_index in [0, 1, 2]:  # Heuristic 1 parameters
+    #         params = top_3_h1_params[action_index]['parameters']
+    #         thrust_left, thrust_right = heuristic1(params['ky'],
+    #                                               params['kx'],
+    #                                               params['abs_pitch_delta'],
+    #                                               params['abs_thrust_delta'],
+    #                                               drone)
+    #     elif action_index in [3, 4, 5]:  # Heuristic 2 parameters
+    #         params = top_3_h2_params[action_index - 3]['parameters']
+    #         theta_target = 7
+    #         thrust_left, thrust_right = heuristic2(params['k'],
+    #                                                params['b'],
+    #                                                params['k_theta'],
+    #                                                params['b_theta'],
+    #                                                theta_target,
+    #                                                drone)
+    #     else:
+    #         raise ValueError("Invalid action_index")
+    #     return thrust_left, thrust_right
+    
     def discrete_actions(self, action_index, drone):
+        # Load the parameters from the JSON file
+        with open('./Results/tuning/all_best_parameters_heuristic_1.json', 'r') as file:
+            data_h1 = json.load(file)
 
-        best_param_heuristic_1 = {'ky': 3, 'kx': 2.6, 'abs_pitch_delta': 0.1, 'abs_thrust_delta':0.4}
-        best_param_heuristic_2 = {'k': 8.25, 'b': 0.3, 'k_theta': 9.5, 'b_theta': 0.3, 'theta_target': 7}
-        
-        ky = best_param_heuristic_1['ky']
-        kx = best_param_heuristic_1['kx']
-        abs_pitch_delta = best_param_heuristic_1['abs_pitch_delta']
-        abs_thrust_delta = best_param_heuristic_1['abs_thrust_delta']
+        sorted_h1_data = sorted(data_h1, key=lambda x: x['performance'], reverse=True)
+        top_h1_params = sorted_h1_data[:2]
 
-        k = best_param_heuristic_2['k']
-        b = best_param_heuristic_2['b']
-        k_theta = best_param_heuristic_2['k_theta']
-        b_theta = best_param_heuristic_2['b_theta']
-        theta_target = best_param_heuristic_2['theta_target']
+        with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'r') as file:
+            data_h2 = json.load(file)
 
-        if action_index == 0:
-            thrust_left, thrust_right = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
+        sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)
+        top_h2_params = sorted_h2_data[:2]
+
+        # Check the action_index and set parameters accordingly
+        if action_index in [0, 1]:  # Heuristic 1 parameters
+            params = top_h1_params[action_index]['parameters']
+            thrust_left, thrust_right = heuristic1(params['ky'],
+                                                  params['kx'],
+                                                  params['abs_pitch_delta'],
+                                                  params['abs_thrust_delta'],
+                                                  drone)
+        elif action_index in [2, 3]:  # Heuristic 2 parameters
+            params = top_h2_params[action_index - 3]['parameters']
+            theta_target = 7
+            thrust_left, thrust_right = heuristic2(params['k'],
+                                                   params['b'],
+                                                   params['k_theta'],
+                                                   params['b_theta'],
+                                                   theta_target,
+                                                   drone)
         else:
-            thrust_left, thrust_right = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
+            raise ValueError("Invalid action_index")
         return thrust_left, thrust_right
+    
+    # def discrete_actions(self, action_index, drone):
+
+    #     best_param_heuristic_1 = {'ky': 3, 'kx': 2.6, 'abs_pitch_delta': 0.1, 'abs_thrust_delta':0.4}
+    #     best_param_heuristic_2 = {'k': 8.25, 'b': 0.3, 'k_theta': 9.5, 'b_theta': 0.3, 'theta_target': 7}
+        
+    #     ky = best_param_heuristic_1['ky']
+    #     kx = best_param_heuristic_1['kx']
+    #     abs_pitch_delta = best_param_heuristic_1['abs_pitch_delta']
+    #     abs_thrust_delta = best_param_heuristic_1['abs_thrust_delta']
+
+    #     k = best_param_heuristic_2['k']
+    #     b = best_param_heuristic_2['b']
+    #     k_theta = best_param_heuristic_2['k_theta']
+    #     b_theta = best_param_heuristic_2['b_theta']
+    #     theta_target = best_param_heuristic_2['theta_target']
+
+    #     if action_index == 0:
+    #         thrust_left, thrust_right = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
+    #     else:
+    #         thrust_left, thrust_right = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
+    #     return thrust_left, thrust_right
     
     def get_thrusts(self, drone: Drone):
         state = self.get_state(drone)
@@ -266,6 +349,46 @@ class DQNController(FlightController):
         return next_state, reward, done
     
     def train(self):
+        learning_rates = [0.05, 0.01]
+        discount_factors = [0.85, 0.95]
+        epsilon_decays = [0.995, 0.99]
+
+        summary_performance = []
+
+        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
+        current_run = 0
+
+        for lr in learning_rates:
+            for df in discount_factors:
+                for ed in epsilon_decays:
+                    self.__init__()
+                    current_run += 1
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+
+                    self.learning_rate = lr
+                    self.discount_factor = df
+                    self.epsilon_decay = ed
+
+                    cumulative_rewards, evaluation_epochs, best_performance = self.run_training_sequence()
+
+                    # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
+                    combined_data = np.column_stack((evaluation_epochs, cumulative_rewards))
+                    np.save(f'./Results/training/dqn_lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
+
+                    # Append best performance data to the list
+                    summary_performance.append({
+                        'learning_rate': lr,
+                        'discount_factor': df,
+                        'epsilon_decay': ed,
+                        'best_performance': best_performance
+                    })
+
+        # Save summary_performance as a CSV file
+        df_summary = pd.DataFrame(summary_performance)
+        df_summary.to_csv(f'./Results/training/summary_performance_dqn_{self.state_size}_{self.action_size}.csv', index=False)
+        print("Saved summary and Cumulative reward results")
+
+    def run_training_sequence(self):
 
         evaluation_epochs = []
         cumulative_rewards = []
@@ -318,13 +441,14 @@ class DQNController(FlightController):
 
                 if performance >= best_performance:
                     best_performance = performance
-                    print("Improved!")
+                    print(f"Improve performance: {performance}")
                     self.save(f"./Results/dqn/dqn_controller_{e}.npz")
 
             if self.epsilon > self.min_epsilon:
                 self.epsilon *= self.epsilon_decay
                 
         print("Training finished.")
+        return cumulative_rewards, evaluation_epochs, best_performance
             
     def evaluate_performance(self):
         """
