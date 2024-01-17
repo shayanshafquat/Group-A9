@@ -94,11 +94,11 @@ class QLearningController(FlightController):
         self.theta_target = 7
 
 
-    def discretize_with_clamp(self, value, min_val, max_val, step):
-        # Clamp the value within the specified range
-        clamped_value = max(min_val, min(max_val, value))
-        # Discretize the clamped value
-        return int((clamped_value - min_val) / step)
+    # def discretize_with_clamp(self, value, min_val, max_val, step):
+    #     # Clamp the value within the specified range
+    #     clamped_value = max(min_val, min(max_val, value))
+    #     # Discretize the clamped value
+    #     return int((clamped_value - min_val) / step)
     
     def get_state(self, drone:Drone):
 
@@ -106,22 +106,22 @@ class QLearningController(FlightController):
         dx = target_point[0] - drone.x
         dy = target_point[1] - drone.y
         distance = math.sqrt(dx**2 + dy**2)
-        velocity_y = drone.velocity_y
+        velocity_y = abs(drone.velocity_y)
         pitch = drone.pitch
-        pitch_velocity = drone.pitch_velocity
+        pitch_velocity = abs(drone.pitch_velocity)
 
         # Define the discretization steps for each component
         dist_bin = [0.1, 0.5] # 3
         # dist_bin = [0.1, 0.3, 0.7] #4
 
-        vel_bin = [0.1] # 3
+        vel_bin = [0.1] # 2
         # vel_bin = [0.1, 0.25]  #3
 
-        pitch_vel_bin = [0.1] #2
+        pitch_vel_bin = [0.1] #3
         # pitch_vel_bin = [0.1, 0.3, 0.6] #3
 
-        discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if distance <= edge), len(vel_bin)) # 3 or 5
-        discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if distance <= edge), len(pitch_vel_bin)) # 3
+        discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if velocity_y <= edge), len(vel_bin)) # 3 or 5
+        discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if pitch_velocity <= edge), len(pitch_vel_bin)) # 3
         discretized_dx = 0 if dx >=0 else 1  # 2
         discretized_dy = 0 if dy >= 0 else 1  # 2
         discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
@@ -217,27 +217,6 @@ class QLearningController(FlightController):
             raise ValueError("Invalid action_index")
         return thrust_left, thrust_right
     
-    # def discrete_actions(self, action_index, drone):
-
-    #     best_param_heuristic_1 = {'ky': 3, 'kx': 2.6, 'abs_pitch_delta': 0.1, 'abs_thrust_delta':0.4}
-    #     best_param_heuristic_2 = {'k': 8.25, 'b': 0.3, 'k_theta': 9.5, 'b_theta': 0.3, 'theta_target': 7}
-        
-    #     ky = best_param_heuristic_1['ky']
-    #     kx = best_param_heuristic_1['kx']
-    #     abs_pitch_delta = best_param_heuristic_1['abs_pitch_delta']
-    #     abs_thrust_delta = best_param_heuristic_1['abs_thrust_delta']
-
-    #     k = best_param_heuristic_2['k']
-    #     b = best_param_heuristic_2['b']
-    #     k_theta = best_param_heuristic_2['k_theta']
-    #     b_theta = best_param_heuristic_2['b_theta']
-    #     theta_target = best_param_heuristic_2['theta_target']
-
-    #     if action_index == 0:
-    #         thrust_left, thrust_right = heuristic1(ky, kx, abs_pitch_delta, abs_thrust_delta, drone)
-    #     else:
-    #         thrust_left, thrust_right = heuristic2(k, b, k_theta, b_theta, theta_target, drone)
-    #     return thrust_left, thrust_right
 
     def get_thrusts(self, drone: Drone):
         state = self.get_state(drone)
@@ -350,7 +329,7 @@ class QLearningController(FlightController):
 
                     # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
                     combined_data = np.column_stack((evaluation_epochs, cumulative_rewards))
-                    np.save(f'./Results/q-learning/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}_1.npy', combined_data)
+                    np.save(f'./Results/q-learning/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
 
                     # Append best performance data to the list
                     summary_performance.append({
@@ -362,7 +341,7 @@ class QLearningController(FlightController):
 
         # Save summary_performance as a CSV file
         df_summary = pd.DataFrame(summary_performance)
-        df_summary.to_csv(f'./Results/q-learning/summary_performance_{self.state_size}_{self.action_size}_1.csv', index=False)
+        df_summary.to_csv(f'./Results/q-learning/summary_performance_{self.state_size}_{self.action_size}.csv', index=False)
         print("Saved summary and Cumulative reward results")
 
     def run_training_sequence(self):

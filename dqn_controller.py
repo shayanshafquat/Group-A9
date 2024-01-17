@@ -6,6 +6,7 @@ import json
 from q_learning import heuristic1, heuristic2
 import pandas as pd
 import math
+# import multiprocessing
 
 class RMSpropOptimizer:
     def __init__(self, learning_rate=0.001, rho=0.9, epsilon=1e-08):
@@ -86,13 +87,13 @@ class DQNController(FlightController):
     def __init__(self,
                 state_size=32*3,
                 action_size=4,
-                hidden_size=64, 
+                hidden_size=48, 
                 learning_rate=0.05, 
                 gamma=0.95, 
                 epsilon=1.0, 
                 epsilon_decay=0.99, 
                 min_epsilon=0.01, 
-                memory_size=10000):
+                memory_size=9000):
         super().__init__()
         self.state_size = state_size
         self.action_size = action_size
@@ -101,8 +102,8 @@ class DQNController(FlightController):
         self.gamma = gamma
         self.memory = []  # Experience replay buffer
         self.memory_size = memory_size
-        self.num_episodes = 200
-        self.evaluation_interval = 10
+        self.num_episodes = 400
+        self.evaluation_interval = 20
         self.batch_size = 128
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
@@ -129,22 +130,22 @@ class DQNController(FlightController):
         dx = target_point[0] - drone.x
         dy = target_point[1] - drone.y
         distance = math.sqrt(dx**2 + dy**2)
-        velocity_y = drone.velocity_y
+        velocity_y = abs(drone.velocity_y)
         pitch = drone.pitch
-        pitch_velocity = drone.pitch_velocity
+        pitch_velocity = abs(drone.pitch_velocity)
 
         # Define the discretization steps for each component
         dist_bin = [0.1, 0.5] # 3
         # dist_bin = [0.1, 0.3, 0.7] #4
 
-        vel_bin = [0.1] # 3
+        vel_bin = [0.1] # 2
         # vel_bin = [0.1, 0.25]  #3
 
-        pitch_vel_bin = [0.1] #2
+        pitch_vel_bin = [0.1] #3
         # pitch_vel_bin = [0.1, 0.3, 0.6] #3
 
-        discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if distance <= edge), len(vel_bin)) # 3 or 5
-        discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if distance <= edge), len(pitch_vel_bin)) # 3
+        discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if velocity_y <= edge), len(vel_bin)) # 3 or 5
+        discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if pitch_velocity <= edge), len(pitch_vel_bin)) # 3
         discretized_dx = 0 if dx >=0 else 1  # 2
         discretized_dy = 0 if dy >= 0 else 1  # 2
         discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
@@ -349,10 +350,31 @@ class DQNController(FlightController):
             self.target_index += 1
         return next_state, reward, done
     
+    # def train_worker(self, lr, df, ed):
+    #     self.__init__()
+    #     print(f'Running training with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+
+    #     self.learning_rate = lr
+    #     self.discount_factor = df
+    #     self.epsilon_decay = ed
+
+    #     cumulative_rewards, evaluation_epochs, mean_losses, best_performance = self.run_training_sequence()
+
+    #     # Combine and save data
+    #     combined_data = np.column_stack((evaluation_epochs, cumulative_rewards, mean_losses))
+    #     np.save(f'./Results/dqn/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}_1.npy', combined_data)
+
+    #     return {
+    #         'learning_rate': lr,
+    #         'discount_factor': df,
+    #         'epsilon_decay': ed,
+    #         'best_performance': best_performance
+    #     }
+
     def train(self):
         learning_rates = [0.05, 0.01]
         discount_factors = [0.85, 0.95]
-        epsilon_decays = [0.95, 0.9]
+        epsilon_decays = [0.99, 0.97]
 
         summary_performance = []
 
@@ -364,7 +386,7 @@ class DQNController(FlightController):
                 for ed in epsilon_decays:
                     self.__init__()
                     current_run += 1
-                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}, State size={self.state_size}, Action size={self.action_size}')
 
                     self.learning_rate = lr
                     self.discount_factor = df
@@ -378,6 +400,8 @@ class DQNController(FlightController):
 
                     # Append best performance data to the list
                     summary_performance.append({
+                        'state size': self.state_size,
+                        'action_size':self.action_size,
                         'learning_rate': lr,
                         'discount_factor': df,
                         'epsilon_decay': ed,
