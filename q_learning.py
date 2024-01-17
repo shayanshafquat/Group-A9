@@ -67,7 +67,7 @@ def heuristic2(k, b, k_theta, b_theta, theta_target, drone: Drone) -> Tuple[floa
 
 class QLearningController(FlightController):
     def __init__(self,
-                 state_size=32*3,
+                 state_size=96*4,
                  action_size=4,
                  learning_rate=0.2,
                  gamma=0.95,
@@ -111,14 +111,14 @@ class QLearningController(FlightController):
         pitch_velocity = abs(drone.pitch_velocity)
 
         # Define the discretization steps for each component
-        dist_bin = [0.1, 0.5] # 3
-        # dist_bin = [0.1, 0.3, 0.7] #4
+        # dist_bin = [0.1, 0.5] # 3
+        dist_bin = [0.1, 0.3, 0.7] #4
 
-        vel_bin = [0.1] # 2
-        # vel_bin = [0.1, 0.25]  #3
+        # vel_bin = [0.1] # 2
+        vel_bin = [0.1, 0.25]  #3
 
-        pitch_vel_bin = [0.1] #3
-        # pitch_vel_bin = [0.1, 0.3, 0.6] #3
+        # pitch_vel_bin = [0.1] #3
+        pitch_vel_bin = [0.1, 0.3, 0.6] #4
 
         discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if velocity_y <= edge), len(vel_bin)) # 3 or 5
         discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if pitch_velocity <= edge), len(pitch_vel_bin)) # 3
@@ -129,19 +129,20 @@ class QLearningController(FlightController):
    
 
         # Combine into a single state index
-        state_index = (discretized_dx +
-                       discretized_dy * 2+
-                       discretized_velocity_y * 2*2 +
-                       discretized_pitch * 2*2*2 +
-                       discretized_pitch_velocity * 2*2*2*2 +
-                       discretized_dist * 2*2*2*2*2 
-                       )
         # state_index = (discretized_dx +
         #                discretized_dy * 2+
         #                discretized_velocity_y * 2*2 +
-        #                discretized_pitch_velocity * 2*2*4 +
-        #                discretized_dist * 2*2*4*4 
+        #                discretized_pitch * 2*2*2 +
+        #                discretized_pitch_velocity * 2*2*2*2 +
+        #                discretized_dist * 2*2*2*2*2 
         #                )
+        state_index = (discretized_dx +
+                       discretized_dy * 2+
+                       discretized_velocity_y * 2*2 +
+                       discretized_pitch * 2*2*3 +
+                       discretized_pitch_velocity * 2*2*3*2 +
+                       discretized_dist * 2*2*3*2*4 
+                       )
         if(state_index < 0):
             print("state index is negative")
         return state_index
@@ -319,7 +320,7 @@ class QLearningController(FlightController):
                 for ed in epsilon_decays:
                     self.__init__()
                     current_run += 1
-                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}. state size={self.state_size}, Action siz={self.action_size}')
 
                     self.learning_rate = lr
                     self.discount_factor = df
@@ -388,7 +389,7 @@ class QLearningController(FlightController):
                 if performance >= best_performance:
                     best_performance = performance
                     self.save()
-                    print(f"Improve performance: {performance}")
+                    print(f"Improved performance: {performance}")
                 
 
             # Decrease epsilon
