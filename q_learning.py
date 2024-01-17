@@ -67,7 +67,7 @@ def heuristic2(k, b, k_theta, b_theta, theta_target, drone: Drone) -> Tuple[floa
 
 class QLearningController(FlightController):
     def __init__(self,
-                 state_size=27*4,
+                 state_size=32*3,
                  action_size=4,
                  learning_rate=0.2,
                  gamma=0.95,
@@ -114,17 +114,17 @@ class QLearningController(FlightController):
         dist_bin = [0.1, 0.5] # 3
         # dist_bin = [0.1, 0.3, 0.7] #4
 
-        vel_bin = [0.1, 0.25] # 3
-        # vel_bin = [0.05, 0.15, 0.3]  #4
+        vel_bin = [0.1] # 3
+        # vel_bin = [0.1, 0.25]  #3
 
-        pitch_vel_bin = [0.1, 0.5] #3
-        # pitch_vel_bin = [0.05, 0.2, 0.65] #4
+        pitch_vel_bin = [0.1] #2
+        # pitch_vel_bin = [0.1, 0.3, 0.6] #3
 
         discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if distance <= edge), len(vel_bin)) # 3 or 5
         discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if distance <= edge), len(pitch_vel_bin)) # 3
         discretized_dx = 0 if dx >=0 else 1  # 2
         discretized_dy = 0 if dy >= 0 else 1  # 2
-        # discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
+        discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
         discretized_dist = next((i for i, edge in enumerate(dist_bin) if distance <= edge), len(dist_bin)) #3 or 
    
 
@@ -132,8 +132,9 @@ class QLearningController(FlightController):
         state_index = (discretized_dx +
                        discretized_dy * 2+
                        discretized_velocity_y * 2*2 +
-                       discretized_pitch_velocity * 2*2*3 +
-                       discretized_dist * 2*2*3*3 
+                       discretized_pitch * 2*2*2 +
+                       discretized_pitch_velocity * 2*2*2*2 +
+                       discretized_dist * 2*2*2*2*2 
                        )
         # state_index = (discretized_dx +
         #                discretized_dy * 2+
@@ -349,7 +350,7 @@ class QLearningController(FlightController):
 
                     # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
                     combined_data = np.column_stack((evaluation_epochs, cumulative_rewards))
-                    np.save(f'./Results/training/q_learning_lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
+                    np.save(f'./Results/q-learning/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}_1.npy', combined_data)
 
                     # Append best performance data to the list
                     summary_performance.append({
@@ -361,7 +362,7 @@ class QLearningController(FlightController):
 
         # Save summary_performance as a CSV file
         df_summary = pd.DataFrame(summary_performance)
-        df_summary.to_csv(f'./Results/training/summary_performance_q_learning_{self.state_size}_{self.action_size}.csv', index=False)
+        df_summary.to_csv(f'./Results/q-learning/summary_performance_{self.state_size}_{self.action_size}_1.csv', index=False)
         print("Saved summary and Cumulative reward results")
 
     def run_training_sequence(self):

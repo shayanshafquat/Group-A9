@@ -84,7 +84,7 @@ class NeuralNetwork:
 
 class DQNController(FlightController):
     def __init__(self,
-                state_size=27*4,
+                state_size=32*3,
                 action_size=4,
                 hidden_size=64, 
                 learning_rate=0.05, 
@@ -101,9 +101,9 @@ class DQNController(FlightController):
         self.gamma = gamma
         self.memory = []  # Experience replay buffer
         self.memory_size = memory_size
-        self.num_episodes = 100
-        self.evaluation_interval = 5
-        self.batch_size = 512
+        self.num_episodes = 200
+        self.evaluation_interval = 10
+        self.batch_size = 128
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
@@ -137,17 +137,17 @@ class DQNController(FlightController):
         dist_bin = [0.1, 0.5] # 3
         # dist_bin = [0.1, 0.3, 0.7] #4
 
-        vel_bin = [0.1, 0.25] # 3
-        # vel_bin = [0.05, 0.15, 0.3]  #4
+        vel_bin = [0.1] # 3
+        # vel_bin = [0.1, 0.25]  #3
 
-        pitch_vel_bin = [0.1, 0.5] #3
-        # pitch_vel_bin = [0.05, 0.2, 0.65] #4
+        pitch_vel_bin = [0.1] #2
+        # pitch_vel_bin = [0.1, 0.3, 0.6] #3
 
         discretized_velocity_y = next((i for i, edge in enumerate(vel_bin) if distance <= edge), len(vel_bin)) # 3 or 5
         discretized_pitch_velocity = next((i for i, edge in enumerate(pitch_vel_bin) if distance <= edge), len(pitch_vel_bin)) # 3
         discretized_dx = 0 if dx >=0 else 1  # 2
         discretized_dy = 0 if dy >= 0 else 1  # 2
-        # discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
+        discretized_pitch = 0 if drone.pitch >= 0 else 1   # 2
         discretized_dist = next((i for i, edge in enumerate(dist_bin) if distance <= edge), len(dist_bin)) #3 or 
    
 
@@ -155,8 +155,9 @@ class DQNController(FlightController):
         state_index = (discretized_dx +
                        discretized_dy * 2+
                        discretized_velocity_y * 2*2 +
-                       discretized_pitch_velocity * 2*2*3 +
-                       discretized_dist * 2*2*3*3 
+                       discretized_pitch * 2*2*2 +
+                       discretized_pitch_velocity * 2*2*2*2 +
+                       discretized_dist * 2*2*2*2*2 
                        )
         # state_index = (discretized_dx +
         #                discretized_dy * 2+
@@ -194,7 +195,7 @@ class DQNController(FlightController):
         if len(self.memory) > self.memory_size:
             self.memory.pop(0)  # Remove the oldest experience if the memory is full
 
-    def replay(self, batch_size, num_iterations=3):
+    def replay(self, batch_size, num_iterations=1):
         minibatch_indices = np.random.choice(len(self.memory), batch_size, replace=False)
         minibatch = [self.memory[i] for i in minibatch_indices]
 
@@ -351,7 +352,7 @@ class DQNController(FlightController):
     def train(self):
         learning_rates = [0.05, 0.01]
         discount_factors = [0.85, 0.95]
-        epsilon_decays = [0.995, 0.99]
+        epsilon_decays = [0.95, 0.9]
 
         summary_performance = []
 
@@ -369,11 +370,11 @@ class DQNController(FlightController):
                     self.discount_factor = df
                     self.epsilon_decay = ed
 
-                    cumulative_rewards, evaluation_epochs, best_performance = self.run_training_sequence()
+                    cumulative_rewards, evaluation_epochs, mean_losses, best_performance = self.run_training_sequence()
 
                     # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
-                    combined_data = np.column_stack((evaluation_epochs, cumulative_rewards))
-                    np.save(f'./Results/training/dqn_lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
+                    combined_data = np.column_stack((evaluation_epochs, cumulative_rewards, mean_losses))
+                    np.save(f'./Results/dqn/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
 
                     # Append best performance data to the list
                     summary_performance.append({
@@ -385,13 +386,15 @@ class DQNController(FlightController):
 
         # Save summary_performance as a CSV file
         df_summary = pd.DataFrame(summary_performance)
-        df_summary.to_csv(f'./Results/training/summary_performance_dqn_{self.state_size}_{self.action_size}.csv', index=False)
+        df_summary.to_csv(f'./Results/dqn/summary_performance_{self.state_size}_{self.action_size}.csv', index=False)
         print("Saved summary and Cumulative reward results")
 
     def run_training_sequence(self):
 
         evaluation_epochs = []
         cumulative_rewards = []
+        mean_losses = []
+
         best_performance = float('-inf') 
 
         for e in range(self.num_episodes):
@@ -434,6 +437,7 @@ class DQNController(FlightController):
             if e % self.evaluation_interval == 0 or e == self.num_episodes - 1:
                 performance = self.evaluate_performance()
                 cumulative_rewards.append(performance)
+                mean_losses.append(mean_loss)
                 evaluation_epochs.append(e + 1)
 
                 # Print cumulative reward at the end of each episode
@@ -448,7 +452,7 @@ class DQNController(FlightController):
                 self.epsilon *= self.epsilon_decay
                 
         print("Training finished.")
-        return cumulative_rewards, evaluation_epochs, best_performance
+        return cumulative_rewards, evaluation_epochs, mean_losses, best_performance
             
     def evaluate_performance(self):
         """
