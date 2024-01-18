@@ -1,0 +1,26 @@
+[
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.95,
+        "epsilon_decay": 0.9,
+        "best_performance": -5.456564210577893
+    },
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.85,
+        "epsilon_decay": 0.9,
+        "best_performance": -5.116557946468421
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.95,
+        "epsilon_decay": 0.9,
+        "best_performance": -5.2811821021951175
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.85,
+        "epsilon_decay": 0.9,
+        "best_performance": -5.382946486673032
+    }
+]
