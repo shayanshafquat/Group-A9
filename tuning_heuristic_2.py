@@ -47,8 +47,9 @@ class Heuristic2_RL_tuning(FlightController):
         self.epsilon_decay = 0.995
         self.learning_rate = 0.01
         self.discount_factor = 0.999
-        self.episodes = 1500
+        self.episodes = 4000
         self.evaluation_interval = 30
+        self.reward_method = 1
 
     def get_max_simulation_steps(self):
             return 3000 # You can alter the amount of steps you want your program to run for here
@@ -93,12 +94,21 @@ class Heuristic2_RL_tuning(FlightController):
         # Efficient computation of the reward using numpy operations
         target_point = drone.get_next_target()
         distance_to_target = np.hypot(drone.x - target_point[0], drone.y - target_point[1])
-        reward = (
-            100.0 * drone.has_reached_target_last_update -
-            10.0 * distance_to_target -
-            1.0 * (drone.thrust_left + drone.thrust_right) -
-            0.1
-        )
+
+        if self.reward_method == 0:
+            reward = (
+                100.0 * drone.has_reached_target_last_update -
+                10.0 * distance_to_target -
+                1 * (drone.thrust_left + drone.thrust_right) -
+                0.1
+            )
+        else: 
+            reward = (
+                100.0 * drone.has_reached_target_last_update -
+                10.0 * distance_to_target -
+                0.1 * (drone.thrust_left + drone.thrust_right) -
+                1
+            )
         return reward
     
     def get_q_table_index(self):
@@ -170,58 +180,53 @@ class Heuristic2_RL_tuning(FlightController):
             # Find the action with the maximum Q-value
             action_index = np.unravel_index(np.argmax(self.q_table[q_table_index]), self.q_table[q_table_index].shape)
             return action_index
+        
+    def evaluate_performance(self):
+        """
+        Evaluate the performance of the current controller settings.
 
-    def train(self):
-        learning_rates = [0.1, 0.05]
-        discount_factors = [0.8, 0.9]
-        epsilon_decays = [0.9, 0.99]
+        Returns:
+            float: A performance score, higher is better.
+        """
+        total_performance = 0
+        total_steps = 0
+        num_eval_episodes = 5  # Number of episodes to run for evaluation
+        target_index = 0
 
-        all_best_parameters = []
-        summary_performance = []
+        for _ in range(num_eval_episodes):
+            drone = self.init_drone()  # Initialize the drone for each evaluation episode
+            episode_performance = 0
+            episode_steps = 0
 
-        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
-        current_run = 0
+            for i in range(self.get_max_simulation_steps()):
+                # Get the thrusts based on current ky and kx values
+                thrusts = self.get_thrusts(drone)
+                drone.set_thrust(thrusts)
 
-        for lr in learning_rates:
-            for df in discount_factors:
-                for ed in epsilon_decays:
-                    self.__init__()
-                    current_run += 1
-                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}')
+                # Update the drone's state
+                drone.step_simulation(self.get_time_interval())
 
-                    self.learning_rate = lr
-                    self.discount_factor = df
-                    self.epsilon_decay = ed
+                if drone.has_reached_target_last_update:
+                    target_index += 1
 
-                    best_performance, best_parameters_list = self.run_training_sequence()
-                    
-                    # Add hyperparameters to each entry in best_parameters_list
-                    for params in best_parameters_list:
-                        params['hyperparameters'] = {
-                            'learning_rate': lr,
-                            'discount_factor': df,
-                            'epsilon_decay': ed
-                        }
-                        all_best_parameters.append(params)
+                # Calculate the reward for the current step
+                reward = self.get_reward(drone)
+                episode_performance += reward
 
-                    summary_performance.append({
-                        'learning_rate': lr,
-                        'discount_factor': df,
-                        'epsilon_decay': ed,
-                        'best_performance': best_performance
-                    })
+                if target_index == 4:
+                    break
 
-        # Save all best parameters
-        with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'w') as file:
-            json.dump(all_best_parameters, file, indent=4)
+            # Average performance over the episode
+            total_performance += episode_performance / self.get_max_simulation_steps()
+            total_steps += episode_steps
 
-        # Save summary performance
-        with open('./Results/tuning/summary_performance_heuristic_2.json', 'w') as file:
-            json.dump(summary_performance, file, indent=4)
+        # Average performance over all evaluation episodes
+        return total_performance / num_eval_episodes, total_steps / num_eval_episodes
 
     def run_training_sequence(self):
         best_performance = float('-inf')
-        best_performance = self.evaluate_performance()
+        best_avg_steps = float('-inf')
+        best_performance, best_avg_steps = self.evaluate_performance()
         print(f"Initial Performance:{best_performance}")
         best_parameters_list = []  # List to store the best parameters over time
 
@@ -264,9 +269,10 @@ class Heuristic2_RL_tuning(FlightController):
             self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
             # Evaluate and potentially save parameters
             if episode % self.evaluation_interval == 0:
-                performance = self.evaluate_performance()  # Implement this method
-                if performance > best_performance:
+                performance, steps_count = self.evaluate_performance()  # Implement this method
+                if performance >= best_performance:
                     best_performance = performance
+                    best_avg_steps = steps_count
         #             print(best_performance)
                     current_best_parameters = {
                         'episode': episode + 1,
@@ -280,43 +286,60 @@ class Heuristic2_RL_tuning(FlightController):
                     }
                     best_parameters_list.append(current_best_parameters)
                     print(f"Parameter tuned: {current_best_parameters}")
-                print(f"After Episode {episode + 1}: Mean Cumulative Reward / Step: {performance}")
+                print(f"After Episode {episode + 1}: Mean Cumulative Reward / Step: {performance}, Steps taken: {steps_count}")
 
-        return best_performance, best_parameters_list
+        return best_performance, best_avg_steps, best_parameters_list
         # with open('heuristic_controller_2.1_parameters.json', 'w') as file:
         #     json.dump(best_parameters_list, file, indent=4)
 
-    def evaluate_performance(self):
-        """
-        Evaluate the performance of the current controller settings.
+    def train(self):
+        learning_rates = [0.05, 0.1]
+        discount_factors = [0.95, 0.85]
+        epsilon_decays = [0.9]
 
-        Returns:
-            float: A performance score, higher is better.
-        """
-        total_performance = 0
-        num_eval_episodes = 5  # Number of episodes to run for evaluation
+        all_parameters = []
+        summary_performance = []
 
-        for _ in range(num_eval_episodes):
-            drone = self.init_drone()  # Initialize the drone for each evaluation episode
-            episode_performance = 0
+        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
+        current_run = 0
 
-            for i in range(self.get_max_simulation_steps()):
-                # Get the thrusts based on current ky and kx values
-                thrusts = self.get_thrusts(drone)
-                drone.set_thrust(thrusts)
+        for lr in learning_rates:
+            for df in discount_factors:
+                for ed in epsilon_decays:
+                    self.__init__()
+                    current_run += 1
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}, Reward method: {self.reward_method}')
 
-                # Update the drone's state
-                drone.step_simulation(self.get_time_interval())
+                    self.learning_rate = lr
+                    self.discount_factor = df
+                    self.epsilon_decay = ed
 
-                # Calculate the reward for the current step
-                reward = self.get_reward(drone)
-                episode_performance += reward
+                    cumulative_reward, avg_steps_count, parameters_list = self.run_training_sequence()
+                    
+                    # Add hyperparameters to each entry in best_parameters_list
+                    for params in parameters_list:
+                        params['hyperparameters'] = {
+                            'learning_rate': lr,
+                            'discount_factor': df,
+                            'epsilon_decay': ed
+                        }
+                        all_parameters.append(params)
 
-            # Average performance over the episode
-            total_performance += episode_performance / self.get_max_simulation_steps()
+                    summary_performance.append({
+                        'learning_rate': lr,
+                        'discount_factor': df,
+                        'epsilon_decay': ed,
+                        'best_performance': cumulative_reward,
+                        'avg_steps_count': avg_steps_count
+                    })
 
-        # Average performance over all evaluation episodes
-        return total_performance / num_eval_episodes
+        # Save all best parameters
+        with open(f'./Results/tuning/all_parameters_heuristic_2_{self.reward_method}.json', 'w') as file:
+            json.dump(all_parameters, file, indent=4)
+
+        # Save summary performance
+        with open(f'./Results/tuning/summary_performance_heuristic_2_{self.reward_method}.json', 'w') as file:
+            json.dump(summary_performance, file, indent=4)
 
     def save(self):
         # Save parameters to a file
