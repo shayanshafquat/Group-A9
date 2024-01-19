@@ -33,61 +33,128 @@ class RMSpropOptimizer:
 
 class NeuralNetwork:
     def __init__(self, input_size, hidden_size, output_size, learning_rate):
+        # Initialize weights and biases
         self.w1 = np.random.randn(input_size, hidden_size) * np.sqrt(2. / input_size)
         self.b1 = np.zeros(hidden_size)
         self.w2 = np.random.randn(hidden_size, output_size) * np.sqrt(2. / hidden_size)
         self.b2 = np.zeros(output_size)
+
+        # Initialize batch normalization parameters
+        self.gamma1 = np.ones(hidden_size)
+        self.beta1 = np.zeros(hidden_size)
+        self.gamma2 = np.ones(output_size)
+        self.beta2 = np.zeros(output_size)
+        self.running_mean1 = np.zeros(hidden_size)
+        self.running_var1 = np.ones(hidden_size)
+        self.running_mean2 = np.zeros(output_size)
+        self.running_var2 = np.ones(output_size)
+
         self.learning_rate = learning_rate
         self.optimizer = RMSpropOptimizer(learning_rate)
-        self.dropout_rate = 0.4
-        print(f"w1:{self.w1.shape}\nb1:{self.b1.T.shape}\nw2:{self.w2.shape}\nb2:{self.b2.shape}")
+        self.dropout_rate = 0.2
+
+        # Set training mode
+        self.training = True
+
+    def batch_norm_forward(self, x, gamma, beta, running_mean, running_var, momentum=0.9, eps=1e-5):
+        if self.training:
+            mean = np.mean(x, axis=0)
+            var = np.var(x, axis=0)
+            x_norm = (x - mean) / np.sqrt(var + eps)
+            out = gamma * x_norm + beta
+
+            # Update running mean and variance
+            running_mean = momentum * running_mean + (1 - momentum) * mean
+            running_var = momentum * running_var + (1 - momentum) * var
+        else:
+            x_norm = (x - running_mean) / np.sqrt(running_var + eps)
+            out = gamma * x_norm + beta
+
+        return out, running_mean, running_var
 
     def forward(self, x):
+        # First layer
         z1 = np.dot(x, self.w1) + self.b1
-        a1 = np.tanh(z1)
+        z1_bn, self.running_mean1, self.running_var1 = self.batch_norm_forward(
+            z1, self.gamma1, self.beta1, self.running_mean1, self.running_var1
+        )
+        a1 = np.tanh(z1_bn)
         a1 = self.dropout(a1, self.dropout_rate)
+
+        # Second layer
         z2 = np.dot(a1, self.w2) + self.b2
-        a2 = np.tanh(z2)
-        return a2, z2, a1, z1
-    
+        z2_bn, self.running_mean2, self.running_var2 = self.batch_norm_forward(
+            z2, self.gamma2, self.beta2, self.running_mean2, self.running_var2
+        )
+        a2 = np.tanh(z2_bn)
+
+        return a2, z2_bn, a1, z1_bn
+
     def dropout(self, X, drop_probability):
         keep_probability = 1 - drop_probability
         mask = np.random.binomial(1, keep_probability, size=X.shape)
         return mask * X / keep_probability
-    
+
     def mse_loss(self, y_true, y_pred):
         return ((y_true - y_pred) ** 2).mean()
-    
 
-    def backward(self, x, y, output, z2, a1, z1):
+    def backward(self, x, y, output, z2_bn, a1, z1_bn):
         # Calculate output error using the derivative of MSE
         output_error = -2 * (y - output) / y.size  # Assuming y is a numpy array
 
-        output_delta = output_error * (1 - np.tanh(z2)**2)
+        # Derivative of tanh
+        d_tanh = lambda z: 1 - np.tanh(z) ** 2
 
-        z1_error = np.dot(output_delta, self.w2.T)
-        z1_delta = z1_error * (1 - np.tanh(z1)**2)
+        # Output layer gradients
+        output_delta = output_error * d_tanh(z2_bn)
 
-        # Gradients for weights and biases
-        w2_grad = np.dot(a1.T, output_delta)
-        b2_grad = np.sum(output_delta, axis=0)
+        # Gradients for batch normalization parameters gamma2 and beta2
+        gamma2_grad = np.sum(output_delta * (z2_bn - self.running_mean2) / np.sqrt(self.running_var2), axis=0)
+        beta2_grad = np.sum(output_delta, axis=0)
+
+        # Backprop through second batch normalization layer
+        z2_error = output_delta * self.gamma2 / np.sqrt(self.running_var2)
+        z2_delta = z2_error * d_tanh(z2_bn)  # Corrected to use z2_bn
+
+        # Gradients for weights and biases of second layer
+        w2_grad = np.dot(a1.T, z2_delta)
+        b2_grad = np.sum(z2_delta, axis=0)
+
+        # Backprop to first layer
+        a1_error = np.dot(z2_delta, self.w2.T)
+        a1_delta = a1_error * d_tanh(z1_bn)
+
+        # Gradients for batch normalization parameters gamma1 and beta1
+        gamma1_grad = np.sum(a1_delta * (z1_bn - self.running_mean1) / np.sqrt(self.running_var1), axis=0)
+        beta1_grad = np.sum(a1_delta, axis=0)
+
+        # Backprop through first batch normalization layer
+        z1_error = a1_delta * self.gamma1 / np.sqrt(self.running_var1)
+        z1_delta = z1_error * d_tanh(z1_bn)
+
+        # Gradients for weights and biases of first layer
         w1_grad = np.dot(x.T, z1_delta)
         b1_grad = np.sum(z1_delta, axis=0)
 
         # Update weights and biases using RMSprop
-        self.optimizer.update({'w1': self.w1, 'b1': self.b1, 'w2': self.w2, 'b2': self.b2},
-                            {'w1': w1_grad, 'b1': b1_grad, 'w2': w2_grad, 'b2': b2_grad})
+        self.optimizer.update({'w1': self.w1, 'b1': self.b1, 'w2': self.w2, 'b2': self.b2,
+                            'gamma1': self.gamma1, 'beta1': self.beta1,
+                            'gamma2': self.gamma2, 'beta2': self.beta2},
+                            {'w1': w1_grad, 'b1': b1_grad, 'w2': w2_grad, 'b2': b2_grad,
+                            'gamma1': gamma1_grad, 'beta1': beta1_grad,
+                            'gamma2': gamma2_grad, 'beta2': beta2_grad})
 
         # Compute the loss (optional, for monitoring purposes)
         loss = np.mean((y - output) ** 2)
 
         return loss
 
+
 class DQNController(FlightController):
     def __init__(self,
                 state_size=32*3,
-                action_size=4,
-                hidden_size=48, 
+                action_size=6,
+                hidden_size=128, 
                 learning_rate=0.05, 
                 gamma=0.95, 
                 epsilon=1.0, 
@@ -102,14 +169,14 @@ class DQNController(FlightController):
         self.gamma = gamma
         self.memory = []  # Experience replay buffer
         self.memory_size = memory_size
-        self.num_episodes = 400
-        self.evaluation_interval = 20
-        self.batch_size = 128
+        self.num_episodes = 80
+        self.evaluation_interval = 5
+        self.batch_size = 64
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
         self.model = self.build_model()
-        self.target_model = NeuralNetwork(self.state_size, self.hidden_size, self.action_size, self.learning_rate)
+        self.target_model = self.build_model()
 
     
     def build_model(self):
@@ -233,14 +300,14 @@ class DQNController(FlightController):
     
     def discrete_actions(self, action_index, drone):
         # Assume self.action_space_size is set to the size of the action space (4 or 6)
-        action_space_size = self.action_space_size
+        action_space_size = self.action_size
 
         # Load parameters from JSON files
-        with open('./Results/tuning/all_best_parameters_heuristic_1.json', 'r') as file:
+        with open('./Results/tuning/all_parameters_heuristic_0.json', 'r') as file:
             data_h1 = json.load(file)
         sorted_h1_data = sorted(data_h1, key=lambda x: x['performance'], reverse=True)
 
-        with open('./Results/tuning/all_best_parameters_heuristic_2.json', 'r') as file:
+        with open('./Results/tuning/all_parameters_heuristic_2_0.json', 'r') as file:
             data_h2 = json.load(file)
         sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)
 
@@ -291,57 +358,59 @@ class DQNController(FlightController):
         if done:
             self.target_index += 1
         return next_state, reward, done
-    
 
-    def train(self):
-        learning_rates = [0.05, 0.01]
-        discount_factors = [0.85, 0.95]
-        epsilon_decays = [0.99, 0.97]
+    def evaluate_performance(self):
+        """
+        Evaluate the performance of the current controller settings.
 
-        summary_performance = []
+        Returns:
+            float: A performance score, higher is better.
+        """
+        total_performance = 0
+        total_steps = 0
+        num_eval_episodes = 3  # Number of episodes to run for evaluation
+        target_index = 0
 
-        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
-        current_run = 0
+        for _ in range(num_eval_episodes):
+            drone = self.init_drone()  # Initialize the drone for each evaluation episode
+            episode_performance = 0
+            episode_steps = 0
 
-        for lr in learning_rates:
-            for df in discount_factors:
-                for ed in epsilon_decays:
-                    self.__init__()
-                    current_run += 1
-                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}, State size={self.state_size}, Action size={self.action_size}')
+            for _ in range(self.get_max_simulation_steps()):
+                # Get the thrusts based on current ky and kx values
+                thrusts = self.get_thrusts(drone)
+                drone.set_thrust(thrusts)
 
-                    self.learning_rate = lr
-                    self.discount_factor = df
-                    self.epsilon_decay = ed
+                # Update the drone's state
+                drone.step_simulation(self.get_time_interval())
 
-                    cumulative_rewards, evaluation_epochs, mean_losses, best_performance = self.run_training_sequence()
+                if drone.has_reached_target_last_update:
+                    target_index += 1
 
-                    # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
-                    combined_data = np.column_stack((evaluation_epochs, cumulative_rewards, mean_losses))
-                    np.save(f'./Results/dqn/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
+                # Calculate the reward for the current step
+                reward = self.get_reward(drone)
+                episode_performance += reward
+                episode_steps += 1
 
-                    # Append best performance data to the list
-                    summary_performance.append({
-                        'state size': self.state_size,
-                        'action_size':self.action_size,
-                        'learning_rate': lr,
-                        'discount_factor': df,
-                        'epsilon_decay': ed,
-                        'best_performance': best_performance
-                    })
+                if target_index == 4:
+                    break
 
-        # Save summary_performance as a CSV file
-        df_summary = pd.DataFrame(summary_performance)
-        df_summary.to_csv(f'./Results/dqn/summary_performance_{self.state_size}_{self.action_size}.csv', index=False)
-        print("Saved summary and Cumulative reward results")
+            # Average performance over the episode
+            total_performance += episode_performance / self.get_max_simulation_steps()
+            total_steps += episode_steps
+
+        # Average performance over all evaluation episodes
+        return total_performance / num_eval_episodes, total_steps / num_eval_episodes
 
     def run_training_sequence(self):
 
         evaluation_epochs = []
         cumulative_rewards = []
         mean_losses = []
+        avg_steps = []
 
         best_performance = float('-inf') 
+        best_avg_steps = float('-inf') 
 
         for e in range(self.num_episodes):
             # Reset the environment here and get the initial state
@@ -361,8 +430,8 @@ class DQNController(FlightController):
                 self.remember(state, action_index, reward, next_state, done)
                 total_reward += reward
             
-                if (self.target_index == 5):
-                    print(f"Done Epoch: {e + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
+                if (self.target_index == 4):
+                    # print(f"Done Epoch: {e + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
                     break
 
                 state = next_state
@@ -375,63 +444,75 @@ class DQNController(FlightController):
             # Compute and print the mean loss for the episode
             if replay_count > 0:
                 mean_loss = total_loss / replay_count
-                print(f"Episode: {e + 1}, Mean Loss: {mean_loss:.4f}, Cumulative Reward / Step: {total_reward/self.get_max_simulation_steps()}")
+                print(f"Episode: {e + 1}, Mean Loss: {mean_loss:.4f}")
 
             self.update_target_network()                
 
             # Save the model periodically or at the end of training
             if e % self.evaluation_interval == 0 or e == self.num_episodes - 1:
-                performance = self.evaluate_performance()
+                performance, steps_count = self.evaluate_performance()
                 cumulative_rewards.append(performance)
                 mean_losses.append(mean_loss)
                 evaluation_epochs.append(e + 1)
+                avg_steps.append(steps_count)
 
                 # Print cumulative reward at the end of each episode
-                print(f"Epoch {e+1}: Cumulative reward / Step: {performance}")
+                print(f"Epoch {e+1}: Cumulative reward / step: {performance}, Steps taken: {steps_count}")
 
                 if performance >= best_performance:
                     best_performance = performance
-                    print(f"Improve performance: {performance}")
+                    best_avg_steps = steps_count
+                    print(f"Improved performance: {performance}, Improved #steps: {steps_count}")
                     # self.save(f"./Results/dqn/dqn_controller_{e}.npz")
 
             if self.epsilon > self.min_epsilon:
                 self.epsilon *= self.epsilon_decay
                 
         print("Training finished.")
-        return cumulative_rewards, evaluation_epochs, mean_losses, best_performance
-            
-    def evaluate_performance(self):
-        """
-        Evaluate the performance of the current controller settings.
-
-        Returns:
-            float: A performance score, higher is better.
-        """
-        total_performance = 0
-        num_eval_episodes = 3  # Number of episodes to run for evaluation
-
-        for _ in range(num_eval_episodes):
-            drone = self.init_drone()  # Initialize the drone for each evaluation episode
-            episode_performance = 0
-
-            for _ in range(self.get_max_simulation_steps()):
-                # Get the thrusts based on current ky and kx values
-                thrusts = self.get_thrusts(drone)
-                drone.set_thrust(thrusts)
-
-                # Update the drone's state
-                drone.step_simulation(self.get_time_interval())
-
-                # Calculate the reward for the current step
-                reward = self.get_reward(drone)
-                episode_performance += reward
-
-            # Average performance over the episode
-            total_performance += episode_performance / self.get_max_simulation_steps()
-
-        # Average performance over all evaluation episodes
-        return total_performance / num_eval_episodes
+        return cumulative_rewards, evaluation_epochs, mean_losses, avg_steps, best_performance, best_avg_steps
     
+    def train(self):
+        learning_rates = [0.005]
+        discount_factors = [0.95]
+        epsilon_decays = [0.95]
+
+        summary_performance = []
+
+        total_runs = len(learning_rates) * len(discount_factors) * len(epsilon_decays)
+        current_run = 0
+
+        for lr in learning_rates:
+            for df in discount_factors:
+                for ed in epsilon_decays:
+                    self.__init__()
+                    current_run += 1
+                    print(f'Running training {current_run}/{total_runs} with learning rate={lr}, discount factor={df}, epsilon decay={ed}, State size={self.state_size}, Action size={self.action_size}')
+
+                    self.learning_rate = lr
+                    self.discount_factor = df
+                    self.epsilon_decay = ed
+
+                    cumulative_rewards, evaluation_epochs, mean_losses, avg_steps_epochs, best_performance, steps_taken = self.run_training_sequence()
+
+                    # Combine cumulative_rewards and evaluation_epochs and save as a numpy array
+                    combined_data = np.column_stack((evaluation_epochs, cumulative_rewards, mean_losses, avg_steps_epochs))
+                    np.save(f'./Results/dqn/lr{lr}_df{df}_ed{ed}_{self.state_size}_{self.action_size}.npy', combined_data)
+
+                    # Append best performance data to the list
+                    summary_performance.append({
+                        'state size': self.state_size,
+                        'action_size':self.action_size,
+                        'learning_rate': lr,
+                        'discount_factor': df,
+                        'epsilon_decay': ed,
+                        'cumulative_rewards_per_step': best_performance,
+                        'avg_steps_count': steps_taken
+                    })
+
+        # Save summary_performance as a CSV file
+        df_summary = pd.DataFrame(summary_performance)
+        df_summary.to_csv(f'./Results/dqn/summary_performance_{self.state_size}_{self.action_size}.csv', index=False)
+        print("Saved summary and Cumulative reward results")
     def save(self, filename="final"):
         np.savez(filename, w1=self.model.w1, b1=self.model.b1, w2=self.model.w2, b2=self.model.b2)
 

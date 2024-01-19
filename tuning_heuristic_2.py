@@ -17,7 +17,7 @@ class Heuristic2_RL_tuning(FlightController):
         self.k_theta = self.initial_k_theta  # Proportional constant for pitch control
         self.b_theta = self.initial_b_theta  # Damping constant for pitch control
         self.max_thrust = 1.0  # Maximum thrust for each propeller
-        self.theta_target = 7  # Target pitch angle in degrees     
+        self.theta_target = 10  # Target pitch angle in degrees     
 
         # Define ranges and sizes for discretization
         self.min_k = 1.0
@@ -212,6 +212,7 @@ class Heuristic2_RL_tuning(FlightController):
                 # Calculate the reward for the current step
                 reward = self.get_reward(drone)
                 episode_performance += reward
+                episode_steps += 1
 
                 if target_index == 4:
                     break
@@ -277,6 +278,7 @@ class Heuristic2_RL_tuning(FlightController):
                     current_best_parameters = {
                         'episode': episode + 1,
                         'performance': best_performance,
+                        'best_avg_steps':best_avg_steps,
                         'parameters': {
                             'k': self.k,
                             'b': self.b,
@@ -334,7 +336,7 @@ class Heuristic2_RL_tuning(FlightController):
                     })
 
         # Save all best parameters
-        with open(f'./Results/tuning/all_parameters_heuristic_2_{self.reward_method}.json', 'w') as file:
+        with open(f'./Results/tuning/all_parameters_list_heuristic_2_{self.reward_method}.json', 'w') as file:
             json.dump(all_parameters, file, indent=4)
 
         # Save summary performance
