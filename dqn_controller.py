@@ -51,7 +51,7 @@ class NeuralNetwork:
 
         self.learning_rate = learning_rate
         self.optimizer = RMSpropOptimizer(learning_rate)
-        self.dropout_rate = 0.2
+        self.dropout_rate = 0.3
 
         # Set training mode
         self.training = True
@@ -154,13 +154,13 @@ class DQNController(FlightController):
     def __init__(self,
                 state_size=32*3,
                 action_size=6,
-                hidden_size=128, 
+                hidden_size=256, 
                 learning_rate=0.05, 
                 gamma=0.95, 
                 epsilon=1.0, 
                 epsilon_decay=0.99, 
                 min_epsilon=0.01, 
-                memory_size=9000):
+                memory_size=12000):
         super().__init__()
         self.state_size = state_size
         self.action_size = action_size
@@ -169,9 +169,9 @@ class DQNController(FlightController):
         self.gamma = gamma
         self.memory = []  # Experience replay buffer
         self.memory_size = memory_size
-        self.num_episodes = 80
-        self.evaluation_interval = 5
-        self.batch_size = 64
+        self.num_episodes = 120
+        self.evaluation_interval = 10
+        self.batch_size = 128
         self.epsilon = epsilon
         self.epsilon_decay = epsilon_decay
         self.min_epsilon = min_epsilon
@@ -256,40 +256,6 @@ class DQNController(FlightController):
         if len(self.memory) > self.memory_size:
             self.memory.pop(0)  # Remove the oldest experience if the memory is full
 
-    def replay(self, batch_size, num_iterations=1):
-        minibatch_indices = np.random.choice(len(self.memory), batch_size, replace=False)
-        minibatch = [self.memory[i] for i in minibatch_indices]
-
-        # Prepare batched inputs
-        states = np.array([sample[0] for sample in minibatch])
-        actions = np.array([sample[1] for sample in minibatch])
-        rewards = np.array([sample[2] for sample in minibatch])
-        next_states = np.array([sample[3] for sample in minibatch])
-        dones = np.array([sample[4] for sample in minibatch])
-
-        # Batch forward pass for current states
-        q_values, z2, a1, z1 = self.model.forward(states)
-
-        # Batch forward pass for next states
-        q_next, _, _, _ = self.target_model.forward(next_states)
-        # Vectorized target calculation
-        targets = rewards + self.gamma * np.amax(q_next, axis=1) * (~dones)
-
-        # Update Q-values for the actions taken
-        q_target = q_values.copy()
-        q_target[np.arange(batch_size), actions] = targets
-
-        # Batch backward pass
-        # Loop for multiple backward passes
-        total_loss = 0
-        for _ in range(num_iterations):
-            # Call backward pass
-            loss = self.model.backward(states, q_target, q_values, z2, a1, z1)
-            total_loss += loss
-
-        average_loss = total_loss / num_iterations
-        return average_loss
-
     def act(self, state):
         # Epsilon-greedy action selection
         if np.random.rand() <= self.epsilon:
@@ -303,11 +269,11 @@ class DQNController(FlightController):
         action_space_size = self.action_size
 
         # Load parameters from JSON files
-        with open('./Results/tuning/all_parameters_heuristic_0.json', 'r') as file:
+        with open('./Results/tuning/all_parameters_list_heuristic_0.json', 'r') as file:
             data_h1 = json.load(file)
         sorted_h1_data = sorted(data_h1, key=lambda x: x['performance'], reverse=True)
 
-        with open('./Results/tuning/all_parameters_heuristic_2_0.json', 'r') as file:
+        with open('./Results/tuning/all_parameters_list_heuristic_2_0.json', 'r') as file:
             data_h2 = json.load(file)
         sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)
 
@@ -345,19 +311,55 @@ class DQNController(FlightController):
         thrust_left, thrust_right = self.discrete_actions(np.argmax(q_values), drone)
         return (thrust_left, thrust_right)
     
+    
     def step(self, drone, state, action_index):
         # Convert discrete action back to continuous action
         action = self.discrete_actions(action_index, drone)
         drone.set_thrust(action)                   
         drone.step_simulation(self.get_time_interval())   
         # print(drone.thrust_left, drone.thrust_right) 
-
+        done = False
         next_state = self.get_state(drone)
         reward = self.get_reward(drone)
-        done = drone.has_reached_target_last_update   
-        if done:
+        if drone.has_reached_target_last_update:
             self.target_index += 1
+        if self.target_index == 4:
+            done = True
         return next_state, reward, done
+    
+    def replay(self, batch_size, num_iterations=1):
+        minibatch_indices = np.random.choice(len(self.memory), batch_size, replace=False)
+        minibatch = [self.memory[i] for i in minibatch_indices]
+
+        # Prepare batched inputs
+        states = np.array([sample[0] for sample in minibatch])
+        actions = np.array([sample[1] for sample in minibatch])
+        rewards = np.array([sample[2] for sample in minibatch])
+        next_states = np.array([sample[3] for sample in minibatch])
+        dones = np.array([sample[4] for sample in minibatch])
+
+        # Batch forward pass for current states
+        q_values, z2, a1, z1 = self.model.forward(states)
+
+        # Batch forward pass for next states
+        q_next, _, _, _ = self.target_model.forward(next_states)
+        # Vectorized target calculation
+        targets = rewards + self.gamma * np.amax(q_next, axis=1) * (~dones)
+
+        # Update Q-values for the actions taken
+        q_target = q_values.copy()
+        q_target[np.arange(batch_size), actions] = targets
+
+        # Batch backward pass
+        # Loop for multiple backward passes
+        total_loss = 0
+        for _ in range(num_iterations):
+            # Call backward pass
+            loss = self.model.backward(states, q_target, q_values, z2, a1, z1)
+            total_loss += loss
+
+        average_loss = total_loss / num_iterations
+        return average_loss
 
     def evaluate_performance(self):
         """
@@ -396,7 +398,7 @@ class DQNController(FlightController):
                     break
 
             # Average performance over the episode
-            total_performance += episode_performance / self.get_max_simulation_steps()
+            total_performance += episode_performance / episode_steps
             total_steps += episode_steps
 
         # Average performance over all evaluation episodes
@@ -429,17 +431,20 @@ class DQNController(FlightController):
                 # Store the transition in replay memory
                 self.remember(state, action_index, reward, next_state, done)
                 total_reward += reward
-            
-                if (self.target_index == 4):
-                    # print(f"Done Epoch: {e + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
-                    break
 
                 state = next_state
+
+                if (time == self.get_max_simulation_steps() - 1):
+                    done = True
 
                 if len(self.memory) > self.batch_size:
                     average_loss = self.replay(self.batch_size)
                     total_loss += average_loss
                     replay_count += 1
+
+                if (self.target_index == 4):
+                    # print(f"Done Epoch: {e + 1}, Total Reward: {total_reward}, Steps: {time + 1}")
+                    break
 
             # Compute and print the mean loss for the episode
             if replay_count > 0:
@@ -459,7 +464,7 @@ class DQNController(FlightController):
                 # Print cumulative reward at the end of each episode
                 print(f"Epoch {e+1}: Cumulative reward / step: {performance}, Steps taken: {steps_count}")
 
-                if performance >= best_performance:
+                if performance > best_performance:
                     best_performance = performance
                     best_avg_steps = steps_count
                     print(f"Improved performance: {performance}, Improved #steps: {steps_count}")
@@ -472,8 +477,8 @@ class DQNController(FlightController):
         return cumulative_rewards, evaluation_epochs, mean_losses, avg_steps, best_performance, best_avg_steps
     
     def train(self):
-        learning_rates = [0.005]
-        discount_factors = [0.95]
+        learning_rates = [0.005, 0.001]
+        discount_factors = [0.85]
         epsilon_decays = [0.95]
 
         summary_performance = []

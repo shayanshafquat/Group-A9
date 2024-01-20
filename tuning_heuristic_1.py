@@ -45,7 +45,7 @@ class Heuristic_RL_tuning(FlightController):
         self.epsilon_decay = 0.9
         self.learning_rate = 0.1
         self.discount_factor = 0.95
-        self.episodes = 4000
+        self.episodes = 3000
         self.evaluation_interval = 30
         self.reward_method = 1 # or 1
 
@@ -89,19 +89,19 @@ class Heuristic_RL_tuning(FlightController):
     def get_reward(self, drone):
         # Efficient computation of the reward using numpy operations
         target_point = drone.get_next_target()
-        distance_to_target = np.hypot(drone.x - target_point[0], drone.y - target_point[1])
+        self.distance_to_target = np.hypot(drone.x - target_point[0], drone.y - target_point[1])
 
         if self.reward_method == 0:
             reward = (
                 100.0 * drone.has_reached_target_last_update -
-                10.0 * distance_to_target -
+                10.0 * self.distance_to_target -
                 1 * (drone.thrust_left + drone.thrust_right) -
                 0.1
             )
         else: 
             reward = (
                 100.0 * drone.has_reached_target_last_update -
-                10.0 * distance_to_target -
+                10.0 * self.distance_to_target -
                 0.1 * (drone.thrust_left + drone.thrust_right) -
                 1
             )
@@ -212,11 +212,15 @@ class Heuristic_RL_tuning(FlightController):
         total_steps = 0
         num_eval_episodes = 5  # Number of episodes to run for evaluation
         target_index = 0
+        total_avg_thrusts = 0
+        total_avg_dist_to_target = 0
 
         for _ in range(num_eval_episodes):
             drone = self.init_drone()  # Initialize the drone for each evaluation episode
             episode_performance = 0
             episode_steps = 0
+            episode_avg_sum_thrust = 0
+            episode_dist_to_target = 0
 
             for _ in range(self.get_max_simulation_steps()):
                 # Get the thrusts based on current ky and kx values
@@ -233,22 +237,30 @@ class Heuristic_RL_tuning(FlightController):
                 reward = self.get_reward(drone)
                 episode_performance += reward
                 episode_steps += 1
+                episode_avg_sum_thrust += np.mean(thrusts)
+                episode_dist_to_target += self.distance_to_target
 
                 if target_index == 4:
                     break
 
             # Average performance over the episode
-            total_performance += episode_performance / self.get_max_simulation_steps()
+            total_performance += episode_performance / episode_steps
             total_steps += episode_steps
+            total_avg_thrusts += episode_avg_sum_thrust / episode_steps
+            total_avg_dist_to_target += episode_dist_to_target / episode_steps
 
         # Average performance over all evaluation episodes
-        return total_performance / num_eval_episodes, total_steps / num_eval_episodes
+        return total_performance / num_eval_episodes, total_steps / num_eval_episodes, total_avg_thrusts / num_eval_episodes, total_avg_dist_to_target / num_eval_episodes
     
     def run_training_sequence(self):
         best_performance = float('-inf')
         best_avg_steps = float('-inf')
-        best_performance, best_avg_steps = self.evaluate_performance()
-        print(f"Initial Performance:{best_performance}")
+        best_avg_thrust = float('-inf')
+        best_avg_dist = float('-inf')
+
+        best_performance, best_avg_steps, avg_thrust, avg_dist = self.evaluate_performance()
+        print(f"Initial Performance:{best_performance:.2f}, Initial Steps: {best_avg_steps:.2f}, Initial avg thrust:{avg_thrust:.2f}, Initial avg distance:{avg_dist:.2f} ")
+
         best_parameters_list = []  # List to store the best parameters over time
         evaluation_epochs = []
         cumulative_rewards = [] 
@@ -258,6 +270,7 @@ class Heuristic_RL_tuning(FlightController):
             self.reset_parameters()
             drone = self.init_drone()
             total_reward = 0
+            target = 0
 
             for t in range(self.get_max_simulation_steps()):
                 current_state_index = self.get_q_table_index()
@@ -274,6 +287,9 @@ class Heuristic_RL_tuning(FlightController):
                 drone.set_thrust(self.get_thrusts(drone))
                 drone.step_simulation(self.get_time_interval())
 
+                if drone.has_reached_target_last_update:
+                    target += 1
+
                 # Calculate reward and update state
                 reward = self.get_reward(drone)
                 total_reward += reward
@@ -285,22 +301,32 @@ class Heuristic_RL_tuning(FlightController):
                 new_value = (1 - self.learning_rate) * old_value + self.learning_rate * (reward + self.discount_factor * next_max)
                 self.q_table[q_table_index] = new_value
 
+                if target == 4 or t == self.get_max_simulation_steps() - 1:
+                    new_value = (1 - self.learning_rate) * old_value + self.learning_rate * reward
+                    self.q_table[q_table_index] = new_value
+                    break
+
             # Decrease epsilon
             self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
 
             # Evaluate and potentially save parameters
             if episode % self.evaluation_interval == 0:
-                performance, steps_count = self.evaluate_performance()  # Implement this method
+                performance, steps_count, avg_thrust, avg_dist = self.evaluate_performance()  # Implement this method
                 cumulative_rewards.append(performance)  # Store the cumulative reward
                 evaluation_epochs.append(episode + 1)  # Store the epoch number
 
                 if performance >= best_performance:
-                    best_performance = performance
-                    best_avg_steps = steps_count
+                    best_performance = round(performance,3)
+                    best_avg_steps = round(steps_count,3)
+                    best_avg_thrust = round(avg_thrust,3)
+                    best_avg_dist = round(avg_dist,3)
+
                     current_best_parameters = {
                         'episode': episode + 1,
                         'performance': best_performance,
-                        'best_avg_steps':best_avg_steps,
+                        'best_avg_steps': best_avg_steps,
+                        'avg_thrusts': best_avg_thrust,
+                        'avg_dist': avg_dist,
                         'parameters': {
                             'ky': self.ky,
                             'kx': self.kx,
@@ -310,8 +336,8 @@ class Heuristic_RL_tuning(FlightController):
                     }
                     best_parameters_list.append(current_best_parameters)
                     print(f"Parameter tuned: {current_best_parameters}")
-                print(f"Episode {episode + 1}: Cumulative Reward / Step: {performance}, Steps Taken: {steps_count}")
-        return best_performance, best_avg_steps, best_parameters_list
+                print(f"Episode {episode + 1}: Cumulative Reward / Step: {performance:.2f}, Steps Taken: {steps_count:.2f}, Average Thrust: {avg_thrust:.2f}, Average Distance: {avg_dist:.3f}.")
+        return best_performance, best_avg_steps, best_parameters_list, best_avg_thrust, best_avg_dist
 
     def train(self):
         learning_rates = [0.05, 0.1]
@@ -335,7 +361,7 @@ class Heuristic_RL_tuning(FlightController):
                     self.discount_factor = df
                     self.epsilon_decay = ed
 
-                    cumulative_reward, avg_steps_count, parameters_list = self.run_training_sequence()
+                    cumulative_reward, avg_steps_count, parameters_list, avg_thrust, avg_dist = self.run_training_sequence()
                     
                     # Add hyperparameters to each entry in best_parameters_list
                     for params in parameters_list:
@@ -351,7 +377,9 @@ class Heuristic_RL_tuning(FlightController):
                         'discount_factor': df,
                         'epsilon_decay': ed,
                         'cumulative_reward_per_steps': cumulative_reward,
-                        'avg_steps_count': avg_steps_count
+                        'avg_steps_count': avg_steps_count,
+                        'avg_thrust': avg_thrust,
+                        'avg_distance': avg_dist
                     })
 
         # Save all best parameters
