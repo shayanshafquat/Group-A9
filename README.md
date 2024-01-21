@@ -43,10 +43,10 @@ for i in range(max_time):
 ```
 
 ### Codes:
-Heuristic Approach 2: heuristic_controller_2.py
-Tuning of Heuristic Approach 1: tuning_heuristic_1.py
-Tuning of Heuristic Approach 2: tuning_heuristic_2.py
-Q-learning: q_learning.py
+- Heuristic Approach 2: heuristic_controller_2.py
+- Tuning of Heuristic Approach 1: tuning_heuristic_1.py
+- Tuning of Heuristic Approach 2: tuning_heuristic_2.py
+- Q-learning: q_learning.py
 
 ### How to run?
 
