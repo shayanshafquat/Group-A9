@@ -1,0 +1,38 @@
+[
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.95,
+        "epsilon_decay": 0.9,
+        "cumulative_reward_per_steps": -5.685,
+        "avg_steps_count": 648.6,
+        "avg_thrust": 0.613,
+        "avg_distance": 0.467
+    },
+    {
+        "learning_rate": 0.05,
+        "discount_factor": 0.85,
+        "epsilon_decay": 0.9,
+        "cumulative_reward_per_steps": -5.896,
+        "avg_steps_count": 379.0,
+        "avg_thrust": 0.622,
+        "avg_distance": 0.481
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.95,
+        "epsilon_decay": 0.9,
+        "cumulative_reward_per_steps": -5.818,
+        "avg_steps_count": 654.6,
+        "avg_thrust": 0.664,
+        "avg_distance": 0.478
+    },
+    {
+        "learning_rate": 0.1,
+        "discount_factor": 0.85,
+        "epsilon_decay": 0.9,
+        "cumulative_reward_per_steps": -5.644,
+        "avg_steps_count": 655.8,
+        "avg_thrust": 0.668,
+        "avg_distance": 0.46
+    }
+]

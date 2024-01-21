@@ -6,16 +6,28 @@ import math
 from typing import Tuple
 from flight_controller import FlightController
 
+
 #---------------------WRITE YOUR OWN CODE HERE------------------------#
 from heuristic_controller import HeuristicController
-from custom_controller import CustomController
+from heuristic_controller_2 import HeuristicController2
+from tuning_heuristic_1 import Heuristic_RL_tuning
+from tuning_heuristic_2 import Heuristic2_RL_tuning
+from q_learning import QLearningController, heuristic1, heuristic2
+# from custom_controller import CustomController
+
 
 def generate_controller() -> FlightController:
-    return HeuristicController() # <--- Replace this with your own written controller
+    # return HeuristicController() # <--- Replace this with your own written controller
+
     # return CustomController()
+    # return HeuristicController2()
+    # return Heuristic_RL_tuning()
+    # return Heuristic2_RL_tuning()
+    return QLearningController()
+
 
 def is_training() -> bool:
-    return False # <--- Replace this with True if you want to train, false otherwise
+    return True # <--- Replace this with True if you want to train, false otherwise
 def is_saving() -> bool:
     return False # <--- Replace this with True if you want to save the results of training, false otherwise
 
@@ -60,6 +72,11 @@ def main(controller: FlightController):
     max_simulation_steps = controller.get_max_simulation_steps()
     delta_time = controller.get_time_interval()
 
+    # drone_x = []
+    # drone_y = []
+    # drone_velocity_y = []
+    # drone_pitch_velocity = []
+    # drone_pitch = []
 
     running = True
     while running:
@@ -73,6 +90,14 @@ def main(controller: FlightController):
         drone.set_thrust(controller.get_thrusts(drone))
         # Update the simulation
         drone.step_simulation(delta_time)
+        # if(drone.thrust_left!=0.5 or drone.thrust_right!=0.5):
+        #     print(drone.thrust_left, drone.thrust_right)
+        # drone_x.append(drone.x)
+        # drone_y.append(drone.y)
+        # drone_velocity_y.append(drone.velocity_y)
+        # drone_pitch_velocity.append(drone.pitch_velocity)
+        # drone_pitch.append(drone.pitch)
+
 
         # --- Begin Drawing --- #
 
@@ -92,6 +117,8 @@ def main(controller: FlightController):
         # Checks whether to reset the current drone
         simulation_step_counter+=1
         if (simulation_step_counter>max_simulation_steps):
+            # print(f"min:{min(drone_x)}\n{min(drone_y)}\n{min(drone_velocity_y)}\n{min(drone_pitch_velocity)}\n{min(drone_pitch)}\n\n")
+            # print(f"max:{max(drone_x)}\n{max(drone_y)}\n{max(drone_velocity_y)}\n{max(drone_pitch_velocity)}\n{max(drone_pitch)}")
             drone = controller.init_drone() # Reset the drone
             simulation_step_counter = 0
 
@@ -122,5 +149,5 @@ if __name__ == "__main__":
             controller.save()        
     else:
         controller.load()
-    
+    # print(controller.q_values)
     main(controller)

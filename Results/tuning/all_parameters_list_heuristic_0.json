@@ -1,0 +1,308 @@
+[
+    {
+        "episode": 211,
+        "performance": -5.907,
+        "best_avg_steps": 906.2,
+        "avg_thrusts": 0.652,
+        "avg_dist": 0.454217225172617,
+        "parameters": {
+            "ky": 1.2000000000000004,
+            "kx": 2.5999999999999996,
+            "abs_pitch_delta": 0.05000000000000001,
+            "abs_thrust_delta": 0.25
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1351,
+        "performance": -5.701,
+        "best_avg_steps": 708.4,
+        "avg_thrusts": 0.702,
+        "avg_dist": 0.425419866981304,
+        "parameters": {
+            "ky": 1.5999999999999999,
+            "kx": 0.6499999999999997,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.3250000000000002
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 271,
+        "performance": -6.054,
+        "best_avg_steps": 908.2,
+        "avg_thrusts": 0.787,
+        "avg_dist": 0.4417966022405955,
+        "parameters": {
+            "ky": 2.85,
+            "kx": 2.15,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.5
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 301,
+        "performance": -5.922,
+        "best_avg_steps": 910.4,
+        "avg_thrusts": 0.667,
+        "avg_dist": 0.4526967907430097,
+        "parameters": {
+            "ky": 1.9000000000000004,
+            "kx": 0.6499999999999999,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.27500000000000013
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 391,
+        "performance": -5.872,
+        "best_avg_steps": 789.4,
+        "avg_thrusts": 0.568,
+        "avg_dist": 0.46920756702705146,
+        "parameters": {
+            "ky": 2.4000000000000004,
+            "kx": 1.2000000000000002,
+            "abs_pitch_delta": 0.1,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1201,
+        "performance": -5.659,
+        "best_avg_steps": 899.6,
+        "avg_thrusts": 0.563,
+        "avg_dist": 0.44737655446071606,
+        "parameters": {
+            "ky": 2.0500000000000003,
+            "kx": 2.7,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.10000000000000002
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1981,
+        "performance": -5.658,
+        "best_avg_steps": 899.0,
+        "avg_thrusts": 0.562,
+        "avg_dist": 0.4472812173816668,
+        "parameters": {
+            "ky": 1.0,
+            "kx": 0.5,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 2011,
+        "performance": -5.651,
+        "best_avg_steps": 900.0,
+        "avg_thrusts": 0.562,
+        "avg_dist": 0.4466553008831654,
+        "parameters": {
+            "ky": 1.3,
+            "kx": 0.5,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 2251,
+        "performance": -5.557,
+        "best_avg_steps": 682.6,
+        "avg_thrusts": 0.568,
+        "avg_dist": 0.4389110174153581,
+        "parameters": {
+            "ky": 1.15,
+            "kx": 1.0999999999999994,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 121,
+        "performance": -6.084,
+        "best_avg_steps": 906.2,
+        "avg_thrusts": 0.757,
+        "avg_dist": 0.4508526417362453,
+        "parameters": {
+            "ky": 2.4000000000000004,
+            "kx": 2.4000000000000004,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.42500000000000004
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 331,
+        "performance": -5.874,
+        "best_avg_steps": 788.8,
+        "avg_thrusts": 0.568,
+        "avg_dist": 0.46935730293485606,
+        "parameters": {
+            "ky": 2.4999999999999996,
+            "kx": 0.95,
+            "abs_pitch_delta": 0.10000000000000007,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 361,
+        "performance": -5.638,
+        "best_avg_steps": 700.0,
+        "avg_thrusts": 0.687,
+        "avg_dist": 0.42253616036130826,
+        "parameters": {
+            "ky": 1.0,
+            "kx": 0.5,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.475
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1,
+        "performance": -6.127,
+        "best_avg_steps": 659.4,
+        "avg_thrusts": 0.669,
+        "avg_dist": 0.47776706932053664,
+        "parameters": {
+            "ky": 1.0,
+            "kx": 2.25,
+            "abs_pitch_delta": 0.15000000000000036,
+            "abs_thrust_delta": 0.2500000000000003
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 211,
+        "performance": -6.091,
+        "best_avg_steps": 908.4,
+        "avg_thrusts": 0.78,
+        "avg_dist": 0.4470881814954154,
+        "parameters": {
+            "ky": 2.2500000000000004,
+            "kx": 3.0,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.475
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 391,
+        "performance": -5.919,
+        "best_avg_steps": 907.4,
+        "avg_thrusts": 0.652,
+        "avg_dist": 0.4553855623761697,
+        "parameters": {
+            "ky": 2.2500000000000004,
+            "kx": 0.6499999999999997,
+            "abs_pitch_delta": 0.05000000000000022,
+            "abs_thrust_delta": 0.24999999999999997
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 541,
+        "performance": -5.658,
+        "best_avg_steps": 899.0,
+        "avg_thrusts": 0.562,
+        "avg_dist": 0.4472811935500882,
+        "parameters": {
+            "ky": 1.0,
+            "kx": 1.3500000000000008,
+            "abs_pitch_delta": 0.05000000000000001,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1501,
+        "performance": -5.557,
+        "best_avg_steps": 682.4,
+        "avg_thrusts": 0.568,
+        "avg_dist": 0.43894898984263697,
+        "parameters": {
+            "ky": 1.3,
+            "kx": 1.099999999999998,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    }
+]

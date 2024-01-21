@@ -1,0 +1,164 @@
+[
+    {
+        "episode": 151,
+        "performance": -5.89,
+        "best_avg_steps": 659.4,
+        "avg_thrusts": 0.669,
+        "avg_dist": 0.48446330933653126,
+        "parameters": {
+            "k": 9.5,
+            "b": 0.24999999999999997,
+            "k_theta": 6.5,
+            "b_theta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 511,
+        "performance": -5.871,
+        "best_avg_steps": 656.4,
+        "avg_thrusts": 0.669,
+        "avg_dist": 0.48284938996162746,
+        "parameters": {
+            "k": 6.0,
+            "b": 0.32499999999999996,
+            "k_theta": 8.5,
+            "b_theta": 0.17499999999999996
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 751,
+        "performance": -5.685,
+        "best_avg_steps": 648.6,
+        "avg_thrusts": 0.613,
+        "avg_dist": 0.46659561015898204,
+        "parameters": {
+            "k": 1.0,
+            "b": 0.32499999999999996,
+            "k_theta": 9.5,
+            "b_theta": 0.325
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1051,
+        "performance": -5.896,
+        "best_avg_steps": 379.0,
+        "avg_thrusts": 0.622,
+        "avg_dist": 0.4813343102085228,
+        "parameters": {
+            "k": 1.0,
+            "b": 0.5499999999999998,
+            "k_theta": 4.0,
+            "b_theta": 0.32499999999999996
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 121,
+        "performance": -5.887,
+        "best_avg_steps": 378.6,
+        "avg_thrusts": 0.728,
+        "avg_dist": 0.4783921133168832,
+        "parameters": {
+            "k": 6.0,
+            "b": 0.925,
+            "k_theta": 2.5,
+            "b_theta": 0.1749999999999999
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 421,
+        "performance": -5.872,
+        "best_avg_steps": 656.0,
+        "avg_thrusts": 0.669,
+        "avg_dist": 0.4830657808949632,
+        "parameters": {
+            "k": 4.0,
+            "b": 0.6999999999999997,
+            "k_theta": 9.0,
+            "b_theta": 0.25
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1261,
+        "performance": -5.863,
+        "best_avg_steps": 655.2,
+        "avg_thrusts": 0.671,
+        "avg_dist": 0.4821755092075647,
+        "parameters": {
+            "k": 7.5,
+            "b": 0.85,
+            "k_theta": 10.0,
+            "b_theta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1801,
+        "performance": -5.818,
+        "best_avg_steps": 654.6,
+        "avg_thrusts": 0.664,
+        "avg_dist": 0.4778941895988285,
+        "parameters": {
+            "k": 6.5,
+            "b": 0.1,
+            "k_theta": 10.0,
+            "b_theta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 481,
+        "performance": -5.644,
+        "best_avg_steps": 655.8,
+        "avg_thrusts": 0.668,
+        "avg_dist": 0.46024669357376136,
+        "parameters": {
+            "k": 5.0,
+            "b": 0.9250000000000002,
+            "k_theta": 9.5,
+            "b_theta": 0.1
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    }
+]
