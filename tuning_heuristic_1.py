@@ -394,11 +394,14 @@ class Heuristic_RL_tuning(FlightController):
         """Load the parameters of this flight controller from disk.
         """
         try:
-            parameter_array = np.load('heuristic_controller_parameters.npy')
-            self.ky = parameter_array[0]
-            self.kx = parameter_array[1]
-            self.abs_pitch_delta = parameter_array[2]
-            self.abs_thrust_delta = parameter_array[3]
+            with open(f'./Results/tuning/all_parameters_list_heuristic_{self.reward_method}.json', 'r') as file:
+                data_h2 = json.load(file)
+            sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)[0]
+            params = sorted_h2_data['parameters']
+            self.k = params['k']
+            self.b = params['b']
+            self.k_theta = params['k_theta']
+            self.b_theta = params['b_theta']
         except:
             print("Could not load parameters, sticking with default parameters.")
 

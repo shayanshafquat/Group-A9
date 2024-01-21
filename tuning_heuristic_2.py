@@ -49,7 +49,7 @@ class Heuristic2_RL_tuning(FlightController):
         self.discount_factor = 0.999
         self.episodes = 3000
         self.evaluation_interval = 30
-        self.reward_method = 1
+        self.reward_method = 0
 
     def get_max_simulation_steps(self):
             return 3000 # You can alter the amount of steps you want your program to run for here
@@ -385,38 +385,16 @@ class Heuristic2_RL_tuning(FlightController):
 
     def load(self):
         # Loading is not applicable in this heuristic controller
-        pass
+        try:
+            with open(f'./Results/tuning/all_parameters_list_heuristic_2_{self.reward_method}.json', 'r') as file:
+                data_h2 = json.load(file)
+            sorted_h2_data = sorted(data_h2, key=lambda x: x['performance'], reverse=True)[0]
+            params = sorted_h2_data['parameters']
+            self.k = params['k']
+            self.b = params['b']
+            self.k_theta = params['k_theta']
+            self.b_theta = params['b_theta']
+        except:
+            print("Could not load parameters, sticking with default parameters.")
 
-# def heuristic1(param1, param2, ...):  # Replace with actual parameter names
-#     # Logic for the first heuristic
-#     return thrust_left, thrust_right
 
-# def heuristic2(param1, param2, ...):
-#     # Logic for the second heuristic
-#     return thrust_left, thrust_right
-
-
-# def generate_action_space():
-#     actions = []
-#     for param1 in np.linspace(min_param1, max_param1, num_steps):
-#         for param2 in np.linspace(min_param2, max_param2, num_steps):
-#             # ... include other parameters if necessary
-#             thrust_left1, thrust_right1 = heuristic1(param1, param2, ...)
-#             thrust_left2, thrust_right2 = heuristic2(param1, param2, ...)
-#             actions.append((thrust_left1, thrust_right1))
-#             actions.append((thrust_left2, thrust_right2))
-#     return np.array(actions)
-
-# class DQNController:
-#     # ... Initialization and other methods ...
-
-#     def __init__(self, state_size, ...):  # Additional parameters
-#         self.action_space = generate_action_space()
-#         self.action_size = len(self.action_space)
-
-#     def step(self, action_index):
-#         thrust_values = self.action_space[action_index]
-#         # Apply these thrust values to the drone
-#         # Update the drone's state and calculate the reward
-#         # Return the new state, reward, and done status
-#         pass

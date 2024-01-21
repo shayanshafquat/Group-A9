@@ -86,7 +86,7 @@ class QLearningController(FlightController):
         self.q_values = np.zeros((state_size, action_size))
 
         self.target_index = 0
-        self.reward_method = 0
+        self.reward_method = 1
     
     def get_state(self, drone: Drone):
         target_point = drone.get_next_target()
@@ -402,25 +402,26 @@ class QLearningController(FlightController):
     def save(self):
         filename = (
             f"./Results/q-learning/q_values_"
+            f"state_size{self.state_size}_"
+            f"action_size{self.action_size}_"
+            f"reward_method{self.reward_method}_"
             f"lr{self.learning_rate}_"
-            f"gamma{self.gamma}_"
-            f"epsdecay{self.epsilon_decay}_"
-            f"epochs{self.epochs}_"
-            f"evalint{self.evaluation_interval}_"
-            f"reward_{self.reward_method}.npy"
+            f"df{self.discount_factor}_"
+            f"ed{self.epsilon_decay}.npy"
         )
         np.save(filename, self.q_values) 
 
 
     def load(self):
+
         filename = (
             f"./Results/q-learning/q_values_"
+            f"state_size{self.state_size}_"
+            f"action_size{self.action_size}_"
+            f"reward_method{self.reward_method}_"
             f"lr{self.learning_rate}_"
-            f"gamma{self.gamma}_"
-            f"epsdecay{self.epsilon_decay}_"
-            f"epochs{self.epochs}_"
-            f"evalint{self.evaluation_interval}_"
-            f"reward_{self.reward_method}.npy"
+            f"df{self.discount_factor}_"
+            f"ed{self.epsilon_decay}.npy"
         )
         self.q_values = np.load(filename)
         print(f"Loaded Q-values from {filename}")
