@@ -42,6 +42,19 @@ for i in range(max_time):
     # TODO: Add in any code for calculating a reward
 ```
 
+### Codes:
+Heuristic Approach 2: heuristic_controller_2.py
+Tuning of Heuristic Approach 1: tuning_heuristic_1.py
+Tuning of Heuristic Approach 2: tuning_heuristic_2.py
+Q-learning: q_learning.py
+
+### How to run?
+
+- Uncomment/Comment the respective approach you are taking in the main.py
+- For Q learning: Change the state size [32*3, 96*4] , action size [4, 6] and reward method [0, 1] in q_learning.py from the given options.
+- If you want to use the saved parameters, set the is_training to False in main.py
+
+
 ## Bug Fixes
 
 1. 26/11/2020: A quick fix to the implementations of the drag dynamics on the drone.
