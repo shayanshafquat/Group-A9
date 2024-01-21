@@ -10,7 +10,6 @@ from flight_controller import FlightController
 #---------------------WRITE YOUR OWN CODE HERE------------------------#
 from heuristic_controller import HeuristicController
 from heuristic_controller_2 import HeuristicController2
-from dqn_controller import DQNController, RMSpropOptimizer, NeuralNetwork
 from tuning_heuristic_1 import Heuristic_RL_tuning
 from tuning_heuristic_2 import Heuristic2_RL_tuning
 from q_learning import QLearningController, heuristic1, heuristic2
@@ -25,7 +24,6 @@ def generate_controller() -> FlightController:
     # return Heuristic_RL_tuning()
     # return Heuristic2_RL_tuning()
     return QLearningController()
-    # return DQNController()
 
 
 def is_training() -> bool:
