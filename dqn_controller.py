@@ -8,6 +8,10 @@ import pandas as pd
 import math
 # import multiprocessing
 
+def softmax(x):
+    """Compute softmax values for each set of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
 class RMSpropOptimizer:
     def __init__(self, learning_rate=0.001, rho=0.9, epsilon=1e-08):
         self.learning_rate = learning_rate
@@ -81,14 +85,12 @@ class NeuralNetwork:
         a1 = np.tanh(z1_bn)
         a1 = self.dropout(a1, self.dropout_rate)
 
-        # Second layer
+        # Second layer (linear activation)
         z2 = np.dot(a1, self.w2) + self.b2
-        z2_bn, self.running_mean2, self.running_var2 = self.batch_norm_forward(
-            z2, self.gamma2, self.beta2, self.running_mean2, self.running_var2
-        )
-        a2 = np.tanh(z2_bn)
+        # Note: No activation function applied to the final layer's output
+        a2 = z2
 
-        return a2, z2_bn, a1, z1_bn
+        return a2, z2, a1, z1_bn
 
     def dropout(self, X, drop_probability):
         keep_probability = 1 - drop_probability
@@ -98,56 +100,37 @@ class NeuralNetwork:
     def mse_loss(self, y_true, y_pred):
         return ((y_true - y_pred) ** 2).mean()
 
-    def backward(self, x, y, output, z2_bn, a1, z1_bn):
-        # Calculate output error using the derivative of MSE
-        output_error = -2 * (y - output) / y.size  # Assuming y is a numpy array
-
+    def backward(self, x, y, output, z2, a1, z1):
         # Derivative of tanh
         d_tanh = lambda z: 1 - np.tanh(z) ** 2
 
+        # Calculate output error (derivative of MSE loss)
+        output_error = -2 * (y - output) / y.size
+
         # Output layer gradients
-        output_delta = output_error * d_tanh(z2_bn)
-
-        # Gradients for batch normalization parameters gamma2 and beta2
-        gamma2_grad = np.sum(output_delta * (z2_bn - self.running_mean2) / np.sqrt(self.running_var2), axis=0)
-        beta2_grad = np.sum(output_delta, axis=0)
-
-        # Backprop through second batch normalization layer
-        z2_error = output_delta * self.gamma2 / np.sqrt(self.running_var2)
-        z2_delta = z2_error * d_tanh(z2_bn)  # Corrected to use z2_bn
+        output_delta = output_error * d_tanh(z2)
 
         # Gradients for weights and biases of second layer
-        w2_grad = np.dot(a1.T, z2_delta)
-        b2_grad = np.sum(z2_delta, axis=0)
+        w2_grad = np.dot(a1.T, output_delta)
+        b2_grad = np.sum(output_delta, axis=0)
 
-        # Backprop to first layer
-        a1_error = np.dot(z2_delta, self.w2.T)
-        a1_delta = a1_error * d_tanh(z1_bn)
-
-        # Gradients for batch normalization parameters gamma1 and beta1
-        gamma1_grad = np.sum(a1_delta * (z1_bn - self.running_mean1) / np.sqrt(self.running_var1), axis=0)
-        beta1_grad = np.sum(a1_delta, axis=0)
-
-        # Backprop through first batch normalization layer
-        z1_error = a1_delta * self.gamma1 / np.sqrt(self.running_var1)
-        z1_delta = z1_error * d_tanh(z1_bn)
+        # Backpropagation to first layer
+        a1_error = np.dot(output_delta, self.w2.T)
+        a1_delta = a1_error * d_tanh(z1)
 
         # Gradients for weights and biases of first layer
-        w1_grad = np.dot(x.T, z1_delta)
-        b1_grad = np.sum(z1_delta, axis=0)
+        w1_grad = np.dot(x.T, a1_delta)
+        b1_grad = np.sum(a1_delta, axis=0)
 
-        # Update weights and biases using RMSprop
-        self.optimizer.update({'w1': self.w1, 'b1': self.b1, 'w2': self.w2, 'b2': self.b2,
-                            'gamma1': self.gamma1, 'beta1': self.beta1,
-                            'gamma2': self.gamma2, 'beta2': self.beta2},
-                            {'w1': w1_grad, 'b1': b1_grad, 'w2': w2_grad, 'b2': b2_grad,
-                            'gamma1': gamma1_grad, 'beta1': beta1_grad,
-                            'gamma2': gamma2_grad, 'beta2': beta2_grad})
+        # Update weights and biases using RMSprop optimizer
+        self.optimizer.update({'w1': self.w1, 'b1': self.b1, 'w2': self.w2, 'b2': self.b2},
+                            {'w1': w1_grad, 'b1': b1_grad, 'w2': w2_grad, 'b2': b2_grad})
 
         # Compute the loss (optional, for monitoring purposes)
         loss = np.mean((y - output) ** 2)
 
         return loss
+
 
 
 class DQNController(FlightController):
@@ -260,9 +243,15 @@ class DQNController(FlightController):
         # Epsilon-greedy action selection
         if np.random.rand() <= self.epsilon:
             return np.random.randint(self.action_size)
-        # print(state)
-        q_values,_,_,_ = self.model.forward(state)
-        return np.argmax(q_values)
+
+        # Obtain Q-values from the model for the given state
+        q_values, _, _, _ = self.model.forward(state)
+
+        # Apply softmax to Q-values
+        softmax_probs = softmax(q_values)
+
+        # Choose action based on the softmax probabilities
+        return np.random.choice(self.action_size, p=softmax_probs)
     
     def discrete_actions(self, action_index, drone):
         # Assume self.action_space_size is set to the size of the action space (4 or 6)
