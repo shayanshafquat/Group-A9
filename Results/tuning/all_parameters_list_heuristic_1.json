@@ -1,0 +1,182 @@
+[
+    {
+        "episode": 1,
+        "performance": -5.31,
+        "best_avg_steps": 711.4,
+        "avg_thrusts": 0.77,
+        "avg_dist": 0.42125391370208476,
+        "parameters": {
+            "ky": 1.7499999999999998,
+            "kx": 2.3,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.44999999999999996
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 421,
+        "performance": -5.299,
+        "best_avg_steps": 710.4,
+        "avg_thrusts": 0.77,
+        "avg_dist": 0.4201860455974658,
+        "parameters": {
+            "ky": 1.5000000000000007,
+            "kx": 1.0999999999999999,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.45
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1,
+        "performance": -5.334,
+        "best_avg_steps": 712.2,
+        "avg_thrusts": 0.783,
+        "avg_dist": 0.42328481845590316,
+        "parameters": {
+            "ky": 1.6500000000000004,
+            "kx": 1.9999999999999998,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.5
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 751,
+        "performance": -5.319,
+        "best_avg_steps": 709.4,
+        "avg_thrusts": 0.766,
+        "avg_dist": 0.4222218290476755,
+        "parameters": {
+            "ky": 1.45,
+            "kx": 3.0,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.5
+        },
+        "hyperparameters": {
+            "learning_rate": 0.05,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 1,
+        "performance": -5.392,
+        "best_avg_steps": 701.2,
+        "avg_thrusts": 0.783,
+        "avg_dist": 0.42949644162131806,
+        "parameters": {
+            "ky": 2.7999999999999994,
+            "kx": 2.4000000000000004,
+            "abs_pitch_delta": 0.07500000000000002,
+            "abs_thrust_delta": 0.5
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 811,
+        "performance": -5.301,
+        "best_avg_steps": 702.2,
+        "avg_thrusts": 0.731,
+        "avg_dist": 0.4214182001237817,
+        "parameters": {
+            "ky": 3.0,
+            "kx": 3.0,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.37500000000000006
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.95,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 151,
+        "performance": -5.672,
+        "best_avg_steps": 903.8,
+        "avg_thrusts": 0.667,
+        "avg_dist": 0.4578355459388517,
+        "parameters": {
+            "ky": 3.0,
+            "kx": 0.5,
+            "abs_pitch_delta": 0.05,
+            "abs_thrust_delta": 0.275
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 211,
+        "performance": -5.437,
+        "best_avg_steps": 682.8,
+        "avg_thrusts": 0.567,
+        "avg_dist": 0.4392031939966083,
+        "parameters": {
+            "ky": 3.0,
+            "kx": 2.7,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.10000000000000006
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 541,
+        "performance": -5.416,
+        "best_avg_steps": 688.4,
+        "avg_thrusts": 0.583,
+        "avg_dist": 0.436461172752891,
+        "parameters": {
+            "ky": 2.4000000000000004,
+            "kx": 3.0,
+            "abs_pitch_delta": 0.07500000000000001,
+            "abs_thrust_delta": 0.12500000000000006
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    },
+    {
+        "episode": 991,
+        "performance": -5.359,
+        "best_avg_steps": 704.0,
+        "avg_thrusts": 0.671,
+        "avg_dist": 0.428323481365386,
+        "parameters": {
+            "ky": 2.5500000000000003,
+            "kx": 2.4499999999999997,
+            "abs_pitch_delta": 0.07500000000000019,
+            "abs_thrust_delta": 0.27499999999999997
+        },
+        "hyperparameters": {
+            "learning_rate": 0.1,
+            "discount_factor": 0.85,
+            "epsilon_decay": 0.9
+        }
+    }
+]
