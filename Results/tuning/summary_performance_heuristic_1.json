@@ -1,50 +1,38 @@
 [
     {
-        "learning_rate": 0.1,
-        "discount_factor": 0.8,
+        "learning_rate": 0.05,
+        "discount_factor": 0.95,
         "epsilon_decay": 0.9,
-        "best_performance": -5.32441126861391
-    },
-    {
-        "learning_rate": 0.1,
-        "discount_factor": 0.8,
-        "epsilon_decay": 0.99,
-        "best_performance": -5.32441126861391
-    },
-    {
-        "learning_rate": 0.1,
-        "discount_factor": 0.9,
-        "epsilon_decay": 0.9,
-        "best_performance": -5.32441126861391
-    },
-    {
-        "learning_rate": 0.1,
-        "discount_factor": 0.9,
-        "epsilon_decay": 0.99,
-        "best_performance": -5.32441126861391
+        "cumulative_reward_per_steps": -5.299,
+        "avg_steps_count": 710.4,
+        "avg_thrust": 0.77,
+        "avg_distance": 0.42
     },
     {
         "learning_rate": 0.05,
-        "discount_factor": 0.8,
+        "discount_factor": 0.85,
         "epsilon_decay": 0.9,
-        "best_performance": -4.961823265013694
+        "cumulative_reward_per_steps": -5.319,
+        "avg_steps_count": 709.4,
+        "avg_thrust": 0.766,
+        "avg_distance": 0.422
     },
     {
-        "learning_rate": 0.05,
-        "discount_factor": 0.8,
-        "epsilon_decay": 0.99,
-        "best_performance": -4.9376116341312075
-    },
-    {
-        "learning_rate": 0.05,
-        "discount_factor": 0.9,
+        "learning_rate": 0.1,
+        "discount_factor": 0.95,
         "epsilon_decay": 0.9,
-        "best_performance": -4.863368763528116
+        "cumulative_reward_per_steps": -5.301,
+        "avg_steps_count": 702.2,
+        "avg_thrust": 0.731,
+        "avg_distance": 0.421
     },
     {
-        "learning_rate": 0.05,
-        "discount_factor": 0.9,
-        "epsilon_decay": 0.99,
-        "best_performance": -5.007576903049841
+        "learning_rate": 0.1,
+        "discount_factor": 0.85,
+        "epsilon_decay": 0.9,
+        "cumulative_reward_per_steps": -5.359,
+        "avg_steps_count": 704.0,
+        "avg_thrust": 0.671,
+        "avg_distance": 0.428
     }
 ]
